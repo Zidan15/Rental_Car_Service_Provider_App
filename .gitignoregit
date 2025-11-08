@@ -1,0 +1,1 @@
+build/.dart_tool/ios/android/*.lock rm -r --cached build .dart_tool ios android
