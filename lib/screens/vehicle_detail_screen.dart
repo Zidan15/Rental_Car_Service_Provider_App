@@ -1,3 +1,5 @@
+// lib/screens/vehicle_detail_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/models/sensor_reading.dart';
@@ -13,7 +15,8 @@ class VehicleDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      // Increased length to 4 for the new GPS tab
+      length: 4, 
       child: Scaffold(
         appBar: AppBar(
           title: Text(vehicle.displayName),
@@ -25,20 +28,20 @@ class VehicleDetailScreen extends StatelessWidget {
             labelPadding: const EdgeInsets.symmetric(horizontal: 20),
             tabs: const [
               Tab(text: 'OVERVIEW'),
-              //Tab(text: 'ALCOHOL'),
-              //Tab(text: 'OBD DATA'),
               Tab(text: 'DASHCAM'),
               Tab(text: 'INTERNAL CAM'),
+              // ADDED GPS Tab
+              Tab(text: 'GPS'), 
             ],
           ),
         ),
         body: TabBarView(
           children: [
             _OverviewTab(vehicle: vehicle),
-            //_AlcoholTab(vehicle: vehicle),
-            //_OBDTab(vehicle: vehicle),
             _PlaceholderTab(message: 'Dashcam footage will appear here'),
             _PlaceholderTab(message: 'Internal camera footage will appear here'),
+            // ADDED GPS Tab View
+            _GPSTab(vehicle: vehicle), 
           ],
         ),
       ),
@@ -101,6 +104,8 @@ class _OverviewTab extends StatelessWidget {
             color: LightModeColors.lightWarning,
             readings: vehicle.engineTempReadings,
           ),
+          // ✅ GPS SENSOR CARD IS REMOVED FROM HERE
+          /*
           const SizedBox(height: 12),
           _SensorCard(
             title: 'GPS',
@@ -109,6 +114,7 @@ class _OverviewTab extends StatelessWidget {
             color: Colors.blue,
             readings: vehicle.batteryReadings,
           ),
+          */
           const SizedBox(height: 12),
           _SensorCard(
             title: 'Speed',
@@ -127,132 +133,67 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-/*class _AlcoholTab extends StatelessWidget {
+// GPS TAB WIDGET (Contains only the map placeholder)
+class _GPSTab extends StatelessWidget {
   final Vehicle vehicle;
 
-  const _AlcoholTab({required this.vehicle});
+  const _GPSTab({required this.vehicle});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isOverThreshold = (vehicle.alcoholLevel ?? 0.0) > 0.08;
-
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: theme.cardTheme.color,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Alcohol Level',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    StatusBadge(
-                      vehicleStatus: isOverThreshold
-                        ? VehicleStatus.critical
-                        : VehicleStatus.healthy,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  '${vehicle.alcoholLevel?.toStringAsFixed(3) ?? "0.000"} %',
-                  style: theme.textTheme.displayMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: isOverThreshold
-                      ? LightModeColors.lightCritical
-                      : LightModeColors.lightSuccess,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Threshold: 0.08 %',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          /*const SizedBox(height: 20),
           Text(
-            'Recent Readings',
+            'Vehicle Location',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.all(16),
+            height: 250,
+            width: double.infinity,
             decoration: BoxDecoration(
               color: theme.cardTheme.color,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.1)),
             ),
-            child: SparklineChart(
-              data: vehicle.alcoholReadings,
-              color: LightModeColors.lightCritical,
-              height: 200,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.location_on,
+                    size: 60,
+                    color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Live Map Placeholder',
+                    style: theme.textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Last known location: 15.35° N, 74.01° E (Goa)',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.secondary,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),*/
-        ],
-      ),
-    );
-  }
-}*/
-
-/*class _OBDTab extends StatelessWidget {
-  final Vehicle vehicle;
-
-  const _OBDTab({required this.vehicle});
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          _SensorCard(
-            title: 'Engine Temperature',
-            value: '${vehicle.engineTemp?.toStringAsFixed(1) ?? "N/A"} °C',
-            threshold: '100 °C',
-            color: LightModeColors.lightWarning,
-            readings: vehicle.engineTempReadings,
-          ),
-          const SizedBox(height: 12),
-          _SensorCard(
-            title: 'Battery Voltage',
-            value: '${vehicle.batteryVoltage?.toStringAsFixed(1) ?? "N/A"} V',
-            threshold: '12.0 V',
-            color: Colors.blue,
-            readings: vehicle.batteryReadings,
-          ),
-          const SizedBox(height: 12),
-          _SensorCard(
-            title: 'Speed',
-            value: '${vehicle.speed?.toStringAsFixed(0) ?? "N/A"} km/h',
-            threshold: '80 km/h',
-            color: LightModeColors.lightSuccess,
-            readings: vehicle.speedReadings,
           ),
         ],
       ),
     );
   }
-}*/
+}
+
 
 class _PlaceholderTab extends StatelessWidget {
   final String message;
@@ -272,7 +213,7 @@ class _PlaceholderTab extends StatelessWidget {
             Icon(
               Icons.videocam_outlined,
               size: 80,
-              color: theme.colorScheme.secondary.withValues(alpha: 0.3),
+              color: theme.colorScheme.secondary.withOpacity(0.3),
             ),
             const SizedBox(height: 24),
             Text(

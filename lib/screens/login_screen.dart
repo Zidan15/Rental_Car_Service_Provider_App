@@ -1,5 +1,7 @@
+// lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:fleetwise/screens/main_navigation.dart';
+import 'package:fleetwise/screens/signup_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,9 +23,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() {
+    // NOTE: In a real app, you would perform validation and API calls here.
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => const MainNavigation(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+          FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
+
+  void _navigateToSignUp() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const SignUpScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
           FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
@@ -35,6 +49,20 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
+    // Define the common button style
+    final buttonStyle = ElevatedButton.styleFrom(
+        backgroundColor: Colors.black, 
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+        ),
+        elevation: 0,
+        textStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+        ),
+    );
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
@@ -88,7 +116,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      // Handle forgot password navigation
+                    },
                     child: Text(
                       'Forgot Password?',
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -98,18 +128,41 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: _login,
-                  child: const Text('Login'),
-                ),
-                const SizedBox(height: 48),
-                Text(
-                  '',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.secondary.withValues(alpha: 0.6),
+                
+                // Login Button (Ensures thickness)
+                SizedBox(
+                  height: 50, // Ensures consistent thickness
+                  child: ElevatedButton(
+                    onPressed: _login,
+                    style: buttonStyle,
+                    child: const Text('LOGIN'),
                   ),
-                  textAlign: TextAlign.center,
                 ),
+                
+                // ✅ 'OR' Separator
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: Text(
+                    'OR',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.secondary.withOpacity(0.8),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                
+                // ✅ SIGN UP Button (Ensures same thickness and style)
+                SizedBox(
+                  height: 50, // Ensures consistent thickness
+                  child: ElevatedButton(
+                    onPressed: _navigateToSignUp,
+                    style: buttonStyle,
+                    child: const Text('SIGN UP'),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
               ],
             ),
           ),

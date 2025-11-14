@@ -3,6 +3,10 @@ import 'package:fleetwise/screens/fleet_screen.dart';
 import 'package:fleetwise/screens/alerts_screen.dart';
 import 'package:fleetwise/screens/add_vehicle_screen.dart';
 import 'package:fleetwise/screens/profile_screen.dart';
+import 'package:fleetwise/screens/login_screen.dart'; 
+import 'package:fleetwise/screens/terms_and_conditions_screen.dart';
+import 'package:fleetwise/screens/about_rent_goa_screen.dart';
+
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -13,54 +17,157 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _currentIndex = 0;
+  // ✅ FIX: Key for the FleetScreen to force a rebuild
+  Key _fleetKey = UniqueKey(); 
 
-  // NEW: Add a method to allow other screens to change the tab index.
   void selectTab(int index) {
+    // If the selected index is 0 (FLEET), update the key to force a rebuild.
+    if (index == 0) {
+      _fleetKey = UniqueKey();
+    }
     setState(() {
       _currentIndex = index;
     });
   }
 
-  // OLD: final List<Widget> _screens = const [
-  // NEW: Change to 'late final' and remove 'const' so we can initialize 
-  // with a callback function passed to FleetScreen.
+  // Callback function to force a rebuild (called from AlertsScreen)
+  void _onAlertsCountChange() {
+    // We already call setState, but let's also update the key to ensure the next
+    // time the FLEET tab is selected, it gets a fresh build.
+    _fleetKey = UniqueKey();
+    setState(() {});
+  }
+
   late final List<Widget> _screens;
-  // NEW: Initialize _screens in initState().
+
   @override
   void initState() {
     super.initState();
-    // The AlertsScreen is at index 1.
     _screens = [
-      // Pass the selectTab method to FleetScreen's new 'onAlertsTap' property.
-      FleetScreen(onAlertsTap: () => selectTab(1)), 
-      const AlertsScreen(),
+      // ✅ MODIFIED: Assign the mutable key here
+      FleetScreen(key: _fleetKey, onAlertsTap: () => selectTab(1)), 
+      
+      // Pass the callback function to AlertsScreen
+      AlertsScreen(onAlertCountChanged: _onAlertsCountChange),
+      
       const AddVehicleScreen(),
-      //const ProfileScreen(),
     ];
+  }
+
+  // Function to handle the Log Out action
+  void _handleLogout() {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
+    // NOTE: We must regenerate the screen list in build() to use the new key
+    final List<Widget> currentScreens = [
+      // ✅ CRUCIAL: Use the stateful key here in the build method
+      FleetScreen(key: _fleetKey, onAlertsTap: () => selectTab(1)), 
+      AlertsScreen(onAlertCountChanged: _onAlertsCountChange),
+      const AddVehicleScreen(),
+    ];
+
     return Scaffold(
-    
+      appBar: AppBar(
+        automaticallyImplyLeading: true, 
+        title: Text(
+          _getTitleForIndex(_currentIndex), 
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: const [],
+      ),
+      
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary,
+              ),
+              child: const Text('Fleetwise Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('Profile'),
+              onTap: () {
+                Navigator.pop(context); 
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const ProfileScreen(), 
+                  ),
+                );
+              },
+            ),
+            
+            const Divider(),
+            
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text('Terms and Conditions'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const TermsAndConditionsScreen(),
+                  ),
+                );
+              },
+            ),
+
+            const Divider(),
+
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('About RENT.GOA'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AboutRentGoaScreen(),
+                  ),
+                );
+              },
+            ),
+            
+            const Divider(),
+
+            ListTile(
+              leading: Icon(Icons.logout, color: theme.colorScheme.error),
+              title: Text('LOG OUT', style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.bold)),
+              onTap: _handleLogout, 
+            ),
+
+            const Divider(),
+          ],
+        ),
+      ),
+      
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        // ✅ CRUCIAL: Use the list generated in build() with the updated key
+        children: currentScreens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: theme.colorScheme.secondary.withValues(alpha: 0.1),
+              color: theme.colorScheme.secondary.withOpacity(0.1), 
               width: 0.5,
             ),
           ),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+          // Use selectTab to ensure the key is updated before setState runs
+          onTap: selectTab, 
           type: BottomNavigationBarType.fixed,
           selectedItemColor: theme.colorScheme.primary,
           unselectedItemColor: theme.colorScheme.secondary,
@@ -88,5 +195,18 @@ class _MainNavigationState extends State<MainNavigation> {
         ),
       ),
     );
+  }
+  
+  String _getTitleForIndex(int index) {
+    switch (index) {
+      case 0:
+        return 'FLEET OVERVIEW';
+      case 1:
+        return 'ALERTS';
+      case 2:
+        return 'ADD VEHICLE';
+      default:
+        return 'FLEETWISE';
+    }
   }
 }
