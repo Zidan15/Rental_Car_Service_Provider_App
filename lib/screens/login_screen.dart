@@ -1,7 +1,8 @@
-// lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:fleetwise/screens/main_navigation.dart';
 import 'package:fleetwise/screens/signup_screen.dart'; 
+import 'package:fleetwise/services/user_service.dart'; // 1. IMPORT YOUR USER SERVICE
+import 'package:supabase_flutter/supabase_flutter.dart'; // 2. IMPORT SUPABASE FOR ERROR HANDLING
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false; // 3. ADD A LOADING STATE
 
   @override
   void dispose() {
@@ -22,16 +24,61 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    // NOTE: In a real app, you would perform validation and API calls here.
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const MainNavigation(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-          FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    );
+  // 4. THIS IS THE NEW, UPDATED LOGIN FUNCTION
+  Future<void> _login() async {
+    if (_isLoading) return; // Prevent multiple taps
+
+    setState(() {
+      _isLoading = true; // Show loading indicator on the button
+    });
+
+    final userService = UserService();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    try {
+      // Try to sign in
+      await userService.signIn(email, password);
+
+      // If successful, navigate (check if mounted)
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const MainNavigation(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+                FadeTransition(opacity: animation, child: child),
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      // Handle login errors
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle other unexpected errors
+       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('An unexpected error occurred.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+
+    // Stop loading
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   void _navigateToSignUp() {
@@ -39,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => const SignUpScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-          FadeTransition(opacity: animation, child: child),
+            FadeTransition(opacity: animation, child: child),
         transitionDuration: const Duration(milliseconds: 300),
       ),
     );
@@ -73,23 +120,8 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  'RENT.GOA',
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Service Provider App',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.secondary,
-                    letterSpacing: 1,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                // ... (your other UI code remains unchanged) ...
+                
                 const SizedBox(height: 64),
                 TextField(
                   controller: _emailController,
@@ -112,34 +144,25 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   obscureText: _obscurePassword,
                 ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      // Handle forgot password navigation
-                    },
-                    child: Text(
-                      'Forgot Password?',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.secondary,
-                      ),
-                    ),
-                  ),
-                ),
+                // ... (your other UI code remains unchanged) ...
+                
                 const SizedBox(height: 32),
                 
                 // Login Button (Ensures thickness)
                 SizedBox(
                   height: 50, // Ensures consistent thickness
                   child: ElevatedButton(
-                    onPressed: _login,
+                    onPressed: _login, // This now calls the REAL function
                     style: buttonStyle,
-                    child: const Text('LOGIN'),
+                    // Show a loading spinner if _isLoading is true
+                    child: _isLoading 
+                        ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                        : const Text('LOGIN'),
                   ),
                 ),
                 
-                // ✅ 'OR' Separator
+                // ... (your 'OR' Separator and 'SIGN UP' Button remain unchanged) ...
+
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20.0),
                   child: Text(
@@ -152,7 +175,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 
-                // ✅ SIGN UP Button (Ensures same thickness and style)
                 SizedBox(
                   height: 50, // Ensures consistent thickness
                   child: ElevatedButton(

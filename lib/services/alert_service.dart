@@ -1,114 +1,76 @@
+// lib/services/alert_service.dart
 import 'package:fleetwise/models/alert.dart';
+import 'package:fleetwise/main.dart'; // Import main.dart to get the 'supabase' helper
+import 'package:supabase_flutter/supabase_flutter.dart'; // Import for CountOption
 
 class AlertService {
-  // Use a static list to hold and modify the mock data globally.
-  static final List<Alert> _mockAlerts = _generateMockAlerts();
-
-  static List<Alert> _generateMockAlerts() {
-    final now = DateTime.now();
-    
-    return [
-      Alert(
-        id: '1',
-        vehicleId: '3',
-        vehicleName: 'Hyundai Creta',
-        sensorType: 'Alcohol Sensor',
-        severity: AlertSeverity.critical,
-        reading: 0.12,
-        threshold: 0.08,
-        timestamp: now.subtract(const Duration(minutes: 2)),
-        // acknowledged: false is default now
-        createdAt: now.subtract(const Duration(minutes: 2)),
-        updatedAt: now,
-      ),
-      Alert(
-        id: '2',
-        vehicleId: '3',
-        vehicleName: 'Hyundai Creta',
-        sensorType: 'Engine Temperature',
-        severity: AlertSeverity.critical,
-        reading: 105.0,
-        threshold: 100.0,
-        timestamp: now.subtract(const Duration(minutes: 5)),
-        createdAt: now.subtract(const Duration(minutes: 5)),
-        updatedAt: now,
-      ),
-      Alert(
-        id: '3',
-        vehicleId: '2',
-        vehicleName: 'Honda City',
-        sensorType: 'Battery Voltage',
-        severity: AlertSeverity.warning,
-        reading: 11.8,
-        threshold: 12.0,
-        timestamp: now.subtract(const Duration(minutes: 10)),
-        createdAt: now.subtract(const Duration(minutes: 10)),
-        updatedAt: now,
-      ),
-      Alert(
-        id: '4',
-        vehicleId: '7',
-        vehicleName: 'Kia Seltos',
-        sensorType: 'Alcohol Sensor',
-        severity: AlertSeverity.warning,
-        reading: 0.04,
-        threshold: 0.03,
-        timestamp: now.subtract(const Duration(minutes: 15)),
-        createdAt: now.subtract(const Duration(minutes: 15)),
-        updatedAt: now,
-      ),
-      Alert(
-        id: '5',
-        vehicleId: '1',
-        vehicleName: 'Toyota Corolla',
-        sensorType: 'Speed',
-        severity: AlertSeverity.info,
-        reading: 85.0,
-        threshold: 80.0,
-        timestamp: now.subtract(const Duration(hours: 1)),
-        acknowledged: true,
-        createdAt: now.subtract(const Duration(hours: 1)),
-        updatedAt: now.subtract(const Duration(minutes: 50)),
-      ),
-      Alert(
-        id: '6',
-        vehicleId: '4',
-        vehicleName: 'Maruti Swift',
-        sensorType: 'Engine Temperature',
-        severity: AlertSeverity.info,
-        reading: 92.0,
-        threshold: 90.0,
-        timestamp: now.subtract(const Duration(hours: 2)),
-        acknowledged: true,
-        createdAt: now.subtract(const Duration(hours: 2)),
-        updatedAt: now.subtract(const Duration(hours: 1, minutes: 50)),
-      ),
-    ];
+  
+  /// Fetches the count of all 'new' alerts.
+  Future<int> getActiveAlertsCount() async {
+    try {
+      // Fetch alerts where status is 'new' and get the count
+      final response = await supabase
+          .from('alerts')
+          .select('id', const CountOption())
+          .eq('status', 'new');
+          
+      return response.count;
+    } catch (e) {
+      print('Error fetching alerts count: $e');
+      return 0;
+    }
   }
-
-  // Returns the shared, mutable list (of immutable Alert objects)
-  static List<Alert> getMockAlerts() => _mockAlerts;
-
-  // FIXED FUNCTION: Uses copyWith to replace the immutable object
-  static void acknowledgeAlert(Alert alert) {
-    // Find the alert in the global mock list by ID
-    final index = _mockAlerts.indexWhere((a) => a.id == alert.id);
-    
-    if (index != -1) {
-      // 1. Create a new Alert object with the updated 'acknowledged' status.
-      final updatedAlert = alert.copyWith(
-        acknowledged: true,
-        updatedAt: DateTime.now(), // Optionally update the timestamp
-      );
+  
+  /// Fetches the full list of alerts (newest first).
+  /// This also fetches the vehicle names to match your mock data.
+  Future<List<Alert>> getAlerts() async {
+    try {
+      // 1. Fetch all alerts
+      final alertData = await supabase
+          .from('alerts')
+          .select('*')
+          .order('timestamp', ascending: false);
       
-      // 2. Replace the old alert object in the list with the new one.
-      _mockAlerts[index] = updatedAlert; 
+      final alerts = (alertData as List<dynamic>)
+          .map((json) => Alert.fromJson(json))
+          .toList();
+
+      // 2. Fetch all vehicles (just to get their names)
+      final vehicleData = await supabase
+          .from('vehicles')
+          .select('id, brand, model, year'); // Only get what we need
+
+      // 3. Create a quick lookup map of Vehicle ID -> Vehicle Name
+      final vehicleMap = {
+        for (var v in (vehicleData as List<dynamic>)) 
+          v['id']: "${v['year']} ${v['brand']} ${v['model']}"
+      };
+      
+      // 4. Enrich alerts with vehicle names
+      final enrichedAlerts = alerts.map((alert) {
+        return alert.copyWith(
+          vehicleName: vehicleMap[alert.vehicleId] ?? 'Unknown Vehicle'
+        );
+      }).toList();
+          
+      return enrichedAlerts;
+
+    } catch (e) {
+      print('Error fetching alerts: $e');
+      return [];
     }
   }
 
-  // Count logic remains the same (counts CRITICAL and UNACKNOWLEDGED alerts).
-  static int getActiveAlertsCount(List<Alert> alerts) =>
-    alerts.where((a) => 
-      a.severity == AlertSeverity.critical && 
-      !a.acknowledged).length;
+  /// Acknowledges an alert by updating its status in the database.
+  Future<void> acknowledgeAlert(String alertId) async {
+    try {
+      await supabase
+          .from('alerts')
+          .update({'status': 'acknowledged'})
+          .eq('id', alertId);
+    } catch (e) {
+      print('Error acknowledging alert: $e');
+      rethrow;
+    }
+  }
 }

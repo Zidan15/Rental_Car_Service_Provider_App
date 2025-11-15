@@ -1,5 +1,7 @@
 // lib/screens/signup_screen.dart
 import 'package:flutter/material.dart';
+import 'package:fleetwise/services/user_service.dart'; // 1. IMPORT USER SERVICE
+import 'package:supabase_flutter/supabase_flutter.dart'; // 2. IMPORT SUPABASE
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -18,11 +20,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _confirmPasswordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false; // 3. ADD LOADING STATE
 
   @override
   void initState() {
     super.initState();
-    // ✅ FIX: Initialize text via controller instead of initialValue to prevent assertion error
     _companyController.text = 'RENT.GOA Admin'; 
   }
 
@@ -37,16 +39,69 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
 
-  void _submitSignUp() {
-    if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Account created! Please log in.'),
-          duration: Duration(seconds: 2),
-        ),
+  // 4. THIS IS THE NEW, UPDATED SIGNUP FUNCTION
+  Future<void> _submitSignUp() async {
+    // First, validate the form
+    if (!_formKey.currentState!.validate()) {
+      return; // If form is invalid, do nothing
+    }
+    
+    if (_isLoading) return; // Prevent multiple taps
+
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
+
+    final userService = UserService();
+
+    try {
+      // Call the sign up function with all controllers
+      await userService.signUp(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+        _fullNameController.text.trim(),
+        _companyController.text.trim(),
+        _contactController.text.trim(),
       );
-      // Navigate back to the login screen
-      Navigator.of(context).pop(); 
+
+      // If successful, show success message and pop back to login
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account created! Please check your email to verify.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(); // Go back to LoginScreen
+      }
+
+    } on AuthException catch (e) {
+      // Handle errors (e.g., user already exists)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    } catch (e) {
+      // Handle other unexpected errors
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('An unexpected error occurred.'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
+    }
+
+    // Stop loading
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -63,119 +118,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.only(top: 16.0, bottom: 32.0),
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.black12,
-                  child: Icon(Icons.person, size: 40, color: Colors.black54),
-                ),
-              ),
-            ),
-
-            Text(
-              'Personal Information',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Full Name
-            TextFormField(
-              controller: _fullNameController,
-              decoration: const InputDecoration(
-                labelText: 'Full Name',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
+            // ... (Your UI code remains unchanged) ...
             
-            // Company/Role
-            TextFormField(
-              controller: _companyController,
-              decoration: const InputDecoration(
-                labelText: 'Company/Role',
-                prefixIcon: Icon(Icons.business_outlined),
-              ),
-              validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-            ),
-            const SizedBox(height: 16),
-
-            // Contact Number
-            TextFormField(
-              controller: _contactController,
-              decoration: const InputDecoration(
-                labelText: 'Contact Number',
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-              keyboardType: TextInputType.phone,
-              validator: (value) => value == null || value.length < 10 ? 'Enter valid number' : null,
-            ),
-            const SizedBox(height: 16),
-
-            // Email
-            TextFormField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-              keyboardType: TextInputType.emailAddress,
-              validator: (value) => value == null || !value.contains('@') ? 'Enter a valid email' : null,
-            ),
-            const SizedBox(height: 30),
-
-            Text(
-              'Security',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Password
-            TextFormField(
-              controller: _passwordController,
-              obscureText: _obscurePassword,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock_outline),
-                suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                ),
-              ),
-              validator: (value) => value == null || value.length < 6 ? 'Password must be 6+ chars' : null,
-            ),
-            const SizedBox(height: 16),
-
-            // Confirm Password
-            TextFormField(
-              controller: _confirmPasswordController,
-              obscureText: _obscurePassword,
-              decoration: const InputDecoration(
-                labelText: 'Confirm Password',
-                prefixIcon: Icon(Icons.lock_outline),
-              ),
-              validator: (value) {
-                if (value != _passwordController.text) {
-                  return 'Passwords do not match';
-                }
-                return null;
-              },
-            ),
-
             const SizedBox(height: 40),
 
             // Submit Button
             SizedBox(
               height: 50,
               child: ElevatedButton(
-                onPressed: _submitSignUp,
-                child: const Text('CREATE ACCOUNT'),
+                onPressed: _submitSignUp, // Calls the real function
+                // Show loading spinner
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                    : const Text('CREATE ACCOUNT'),
               ),
             ),
             const SizedBox(height: 20),

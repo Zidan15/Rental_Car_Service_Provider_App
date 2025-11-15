@@ -1,29 +1,26 @@
-import 'package:fleetwise/models/sensor_reading.dart';
+// lib/models/vehicle.dart
 
+// 1. You need an enum to define the vehicle's status
 enum VehicleStatus { healthy, warning, critical }
 
 class Vehicle {
+  // These come from the 'vehicles' table
   final String id;
   final String brand;
   final String model;
   final int year;
   final String fuelType;
+  final String transmission;
   final String color;
   final String plateNumber;
-  final List<String> deviceIds;
-  final List<String> photoUrls;
+  final String? imageUrl;
+  
+  // These come from the 'sensor_data' table
   final VehicleStatus status;
   final DateTime lastReading;
-  final double? alcoholLevel;
-  final double? engineTemp;
-  final double? batteryVoltage;
-  final double? speed;
-  final List<SensorReading> alcoholReadings;
-  final List<SensorReading> engineTempReadings;
-  final List<SensorReading> batteryReadings;
-  final List<SensorReading> speedReadings;
-  final DateTime createdAt;
-  final DateTime updatedAt;
+  final double alcoholLevel;
+  final double engineTemp;
+  final double speed;
 
   Vehicle({
     required this.id,
@@ -31,117 +28,74 @@ class Vehicle {
     required this.model,
     required this.year,
     required this.fuelType,
+    required this.transmission,
     required this.color,
     required this.plateNumber,
-    required this.deviceIds,
-    required this.photoUrls,
+    this.imageUrl,
     required this.status,
     required this.lastReading,
-    this.alcoholLevel,
-    this.engineTemp,
-    this.batteryVoltage,
-    this.speed,
-    this.alcoholReadings = const [],
-    this.engineTempReadings = const [],
-    this.batteryReadings = const [],
-    this.speedReadings = const [],
-    required this.createdAt,
-    required this.updatedAt,
+    required this.alcoholLevel,
+    required this.engineTemp,
+    required this.speed,
   });
 
-  String get displayName => '$brand $model';
+  // Helper to show "2022 Toyota Corolla"
+  String get displayName => '$year $brand $model';
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'brand': brand,
-    'model': model,
-    'year': year,
-    'fuelType': fuelType,
-    'color': color,
-    'plateNumber': plateNumber,
-    'deviceIds': deviceIds,
-    'photoUrls': photoUrls,
-    'status': status.name,
-    'lastReading': lastReading.toIso8601String(),
-    'alcoholLevel': alcoholLevel,
-    'engineTemp': engineTemp,
-    'batteryVoltage': batteryVoltage,
-    'speed': speed,
-    'alcoholReadings': alcoholReadings.map((r) => r.toJson()).toList(),
-    'engineTempReadings': engineTempReadings.map((r) => r.toJson()).toList(),
-    'batteryReadings': batteryReadings.map((r) => r.toJson()).toList(),
-    'speedReadings': speedReadings.map((r) => r.toJson()).toList(),
-    'createdAt': createdAt.toIso8601String(),
-    'updatedAt': updatedAt.toIso8601String(),
-  };
+  // --- THIS IS THE IMPORTANT PART ---
+  // This "factory" is a translator that turns the 
+  // data from Supabase into a Vehicle object.
+  factory Vehicle.fromJson(Map<String, dynamic> json) {
+    
+    // Get the latest sensor readings (or set defaults if null)
+    final double alcohol = (json['alcohol_level'] as num?)?.toDouble() ?? 0.0;
+    final double temp = (json['engine_temperature'] as num?)?.toDouble() ?? 0.0;
+    final double spd = (json['speed'] as num?)?.toDouble() ?? 0.0;
+    final DateTime lastRead = json['created_at'] != null 
+        ? DateTime.parse(json['created_at']) 
+        : DateTime.now(); // Use now as a fallback
 
-  factory Vehicle.fromJson(Map<String, dynamic> json) => Vehicle(
-    id: json['id'],
-    brand: json['brand'],
-    model: json['model'],
-    year: json['year'],
-    fuelType: json['fuelType'],
-    color: json['color'],
-    plateNumber: json['plateNumber'],
-    deviceIds: List<String>.from(json['deviceIds']),
-    photoUrls: List<String>.from(json['photoUrls']),
-    status: VehicleStatus.values.firstWhere((e) => e.name == json['status']),
-    lastReading: DateTime.parse(json['lastReading']),
-    alcoholLevel: json['alcoholLevel'],
-    engineTemp: json['engineTemp'],
-    batteryVoltage: json['batteryVoltage'],
-    speed: json['speed'],
-    alcoholReadings: (json['alcoholReadings'] as List?)?.map((r) => SensorReading.fromJson(r)).toList() ?? [],
-    engineTempReadings: (json['engineTempReadings'] as List?)?.map((r) => SensorReading.fromJson(r)).toList() ?? [],
-    batteryReadings: (json['batteryReadings'] as List?)?.map((r) => SensorReading.fromJson(r)).toList() ?? [],
-    speedReadings: (json['speedReadings'] as List?)?.map((r) => SensorReading.fromJson(r)).toList() ?? [],
-    createdAt: DateTime.parse(json['createdAt']),
-    updatedAt: DateTime.parse(json['updatedAt']),
-  );
+    // Calculate the status based on the live data
+    VehicleStatus calculatedStatus = VehicleStatus.healthy;
+    if (alcohol > 0.08 || temp > 100.0) {
+      calculatedStatus = VehicleStatus.critical;
+    } else if (alcohol > 0.0 || temp > 90.0) {
+      calculatedStatus = VehicleStatus.warning;
+    }
 
-  Vehicle copyWith({
-    String? id,
-    String? brand,
-    String? model,
-    int? year,
-    String? fuelType,
-    String? color,
-    String? plateNumber,
-    List<String>? deviceIds,
-    List<String>? photoUrls,
-    VehicleStatus? status,
-    DateTime? lastReading,
-    double? alcoholLevel,
-    double? engineTemp,
-    double? batteryVoltage,
-    double? speed,
-    List<SensorReading>? alcoholReadings,
-    List<SensorReading>? engineTempReadings,
-    List<SensorReading>? batteryReadings,
-    List<SensorReading>? speedReadings,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) => Vehicle(
-    id: id ?? this.id,
-    brand: brand ?? this.brand,
-    model: model ?? this.model,
-    year: year ?? this.year,
-    fuelType: fuelType ?? this.fuelType,
-    color: color ?? this.color,
-    plateNumber: plateNumber ?? this.plateNumber,
-    deviceIds: deviceIds ?? this.deviceIds,
-    photoUrls: photoUrls ?? this.photoUrls,
-    status: status ?? this.status,
-    lastReading: lastReading ?? this.lastReading,
-    alcoholLevel: alcoholLevel ?? this.alcoholLevel,
-    engineTemp: engineTemp ?? this.engineTemp,
-    batteryVoltage: batteryVoltage ?? this.batteryVoltage,
-    speed: speed ?? this.speed,
-    alcoholReadings: alcoholReadings ?? this.alcoholReadings,
-    engineTempReadings: engineTempReadings ?? this.engineTempReadings,
-    batteryReadings: batteryReadings ?? this.batteryReadings,
-    speedReadings: speedReadings ?? this.speedReadings,
-    createdAt: createdAt ?? this.createdAt,
-    updatedAt: updatedAt ?? this.updatedAt,
-  );
+    // Create the Vehicle object with all the data
+    return Vehicle(
+      id: json['id'] as String,
+      brand: json['brand'] as String,
+      model: json['model'] as String,
+      year: (json['year'] as num).toInt(),
+      fuelType: json['fuel_type'] as String,
+      transmission: json['transmission'] as String,
+      color: json['color'] as String,
+      plateNumber: json['plate_number'] as String,
+      imageUrl: json['image_url'] as String?,
+      
+      // Assign the live data
+      status: calculatedStatus,
+      lastReading: lastRead,
+      alcoholLevel: alcohol,
+      engineTemp: temp,
+      speed: spd,
+    );
+  }
+
+  // We also need a toJson() for the 'Add Vehicle' screen
+  // You can ignore this for now, but it's good to have.
+  Map<String, dynamic> toJson() {
+    return {
+      'brand': brand,
+      'model': model,
+      'year': year,
+      'fuel_type': fuelType,
+      'transmission': transmission,
+      'color': color,
+      'plate_number': plateNumber,
+      'image_url': imageUrl,
+    };
+  }
 }
