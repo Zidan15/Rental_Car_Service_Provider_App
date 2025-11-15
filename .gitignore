@@ -1,8 +1,12 @@
-
 build/
 .dart_tool/
 ios/
 android/
 *.lock
 *.log
-
+.idea/
+fleetwise.iml
+linux/
+macos/
+test/
+windows/
