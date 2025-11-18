@@ -40,6 +40,9 @@ class _LoginScreenState extends State<LoginScreen> {
       // Try to sign in
       await userService.signIn(email, password);
 
+      // After successful sign-in, ensure the profile exists
+      await userService.createProfileIfMissing();
+
       // If successful, navigate (check if mounted)
       if (mounted) {
         Navigator.of(context).pushReplacement(
@@ -95,20 +98,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    // Define the common button style
-    final buttonStyle = ElevatedButton.styleFrom(
-        backgroundColor: Colors.black, 
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-        ),
-        elevation: 0,
-        textStyle: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-        ),
-    );
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -117,13 +106,30 @@ class _LoginScreenState extends State<LoginScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(32),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ... (your other UI code remains unchanged) ...
-                
-                const SizedBox(height: 64),
-                TextField(
+                // Header
+                Text(
+                  'RENT.GOA',
+                  style: theme.textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Service Provider App',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 48),
+
+                // Email Field
+                TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(
                     labelText: 'Email',
@@ -132,59 +138,83 @@ class _LoginScreenState extends State<LoginScreen> {
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 20),
-                TextField(
+
+                // Password Field
+                TextFormField(
                   controller: _passwordController,
                   decoration: InputDecoration(
                     labelText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
                     ),
                   ),
                   obscureText: _obscurePassword,
                 ),
-                // ... (your other UI code remains unchanged) ...
-                
-                const SizedBox(height: 32),
-                
-                // Login Button (Ensures thickness)
+                const SizedBox(height: 20),
+
+                // Forgot Password
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      // TODO: Implement forgot password logic
+                    },
+                    child: Text(
+                      'Forgot Password?',
+                      style: TextStyle(color: theme.colorScheme.secondary),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Login Button
                 SizedBox(
-                  height: 50, // Ensures consistent thickness
+                  height: 50,
                   child: ElevatedButton(
-                    onPressed: _login, // This now calls the REAL function
-                    style: buttonStyle,
-                    // Show a loading spinner if _isLoading is true
-                    child: _isLoading 
-                        ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: _isLoading
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : const Text('LOGIN'),
                   ),
                 ),
                 
-                // ... (your 'OR' Separator and 'SIGN UP' Button remain unchanged) ...
-
+                // 'OR' Separator
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20.0),
                   child: Text(
                     'OR',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.secondary.withOpacity(0.8),
+                      color: theme.colorScheme.secondary.withAlpha(204),
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 
+                // Sign Up Button
                 SizedBox(
-                  height: 50, // Ensures consistent thickness
+                  height: 50,
                   child: ElevatedButton(
-                    onPressed: _navigateToSignUp,
-                    style: buttonStyle,
+                    onPressed: _isLoading ? null : _navigateToSignUp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
                     child: const Text('SIGN UP'),
                   ),
                 ),
-
-                const SizedBox(height: 20),
               ],
             ),
           ),

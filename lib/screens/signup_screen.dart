@@ -25,7 +25,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   @override
   void initState() {
     super.initState();
-    _companyController.text = 'RENT.GOA Admin'; 
+
   }
 
   @override
@@ -110,31 +110,165 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('CREATE ACCOUNT'),
+        centerTitle: true,
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        iconTheme: IconThemeData(color: theme.colorScheme.onSurface),
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            // ... (Your UI code remains unchanged) ...
-            
-            const SizedBox(height: 40),
-
-            // Submit Button
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _submitSignUp, // Calls the real function
-                // Show loading spinner
-                child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
-                    : const Text('CREATE ACCOUNT'),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Profile Logo
+              const Icon(
+                Icons.account_circle,
+                size: 100,
+                color: Colors.grey,
               ),
-            ),
-            const SizedBox(height: 20),
-          ],
+              const SizedBox(height: 48),
+
+              // Personal Information Header
+              Text(
+                'Personal Information',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Full Name
+              TextFormField(
+                controller: _fullNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+                validator: (value) => value!.isEmpty ? 'Please enter your full name' : null,
+              ),
+              const SizedBox(height: 20),
+
+              // Company Name
+              TextFormField(
+                controller: _companyController,
+                decoration: const InputDecoration(
+                  labelText: 'Company',
+                  prefixIcon: Icon(Icons.business_outlined),
+                ),
+                validator: (value) => value!.isEmpty ? 'Please enter your company name' : null,
+              ),
+              const SizedBox(height: 20),
+
+              // Contact Number
+              TextFormField(
+                controller: _contactController,
+                decoration: const InputDecoration(
+                  labelText: 'Contact Number',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) => value!.isEmpty ? 'Please enter your contact number' : null,
+              ),
+              const SizedBox(height: 20),
+
+              // Email
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email_outlined),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value!.isEmpty) return 'Please enter your email';
+                  if (!value.contains('@')) return 'Please enter a valid email';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 40),
+
+              // Security Header
+              Text(
+                'Security',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Password
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                ),
+                obscureText: _obscurePassword,
+                validator: (value) {
+                  if (value!.isEmpty) return 'Please enter a password';
+                  if (value.length < 6) return 'Password must be at least 6 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 20),
+
+              // Confirm Password
+              TextFormField(
+                controller: _confirmPasswordController,
+                decoration: InputDecoration(
+                  labelText: 'Confirm Password',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                ),
+                obscureText: _obscurePassword,
+                validator: (value) {
+                  if (value != _passwordController.text) return 'Passwords do not match';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 40),
+
+              // Submit Button
+              SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _submitSignUp,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    elevation: 0,
+                  ),
+                  child: _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                      : const Text('CREATE ACCOUNT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
