@@ -1,3 +1,4 @@
+// lib/widgets/status_badge.dart
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/models/alert.dart';
@@ -17,46 +18,58 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    Color bgColor;
-    Color textColor;
-    String text;
-    String emoji;
+    // Non-nullable variables must be assigned a default value
+    Color bgColor = Colors.transparent; 
+    Color textColor = Colors.black;
+    String text = '';
+    String emoji = '❓';
 
+    // 1. Vehicle Status Logic
     if (vehicleStatus != null) {
       switch (vehicleStatus!) {
         case VehicleStatus.healthy:
-          bgColor = LightModeColors.lightSuccess.withValues(alpha: 0.1);
+          bgColor = LightModeColors.lightSuccess.withAlpha(26);
           textColor = LightModeColors.lightSuccess;
           text = 'Healthy';
           emoji = '🟢';
+          break; // Added break
         case VehicleStatus.warning:
-          bgColor = LightModeColors.lightWarning.withValues(alpha: 0.1);
+          bgColor = LightModeColors.lightWarning.withAlpha(26);
           textColor = LightModeColors.lightWarning;
           text = 'Warning';
           emoji = '🟡';
+          break; // Added break
         case VehicleStatus.critical:
-          bgColor = LightModeColors.lightCritical.withValues(alpha: 0.1);
+          bgColor = LightModeColors.lightCritical.withAlpha(26);
           textColor = LightModeColors.lightCritical;
           text = 'Critical';
           emoji = '🔴';
+          break; // Added break
       }
-    } else {
+    } 
+    // 2. Alert Severity Logic
+    else if (alertSeverity != null) { // Added an 'else if' check
       switch (alertSeverity!) {
         case AlertSeverity.info:
-          bgColor = Colors.blue.withValues(alpha: 0.1);
+          // NOTE: Your theme file likely defines LightModeColors.lightInfo
+          // But using Colors.blue for now as a safe default
+          bgColor = Colors.blue.withAlpha(26); 
           textColor = Colors.blue;
           text = 'Info';
-          emoji = '🟢';
+          emoji = 'ℹ️'; // Changed emoji for Info
+          break;
         case AlertSeverity.warning:
-          bgColor = LightModeColors.lightWarning.withValues(alpha: 0.1);
+          bgColor = LightModeColors.lightWarning.withAlpha(26);
           textColor = LightModeColors.lightWarning;
           text = 'Warning';
           emoji = '🟡';
+          break;
         case AlertSeverity.critical:
-          bgColor = LightModeColors.lightCritical.withValues(alpha: 0.1);
+          bgColor = LightModeColors.lightCritical.withAlpha(26);
           textColor = LightModeColors.lightCritical;
           text = 'Critical';
           emoji = '🔴';
+          break;
       }
     }
 

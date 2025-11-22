@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/alert.dart';
 import 'package:fleetwise/services/alert_service.dart';
-import 'package:fleetwise/widgets/status_badge.dart';
-import 'package:fleetwise/theme.dart';
 
 class AlertDetailScreen extends StatelessWidget {
   final Alert alert;
@@ -39,12 +37,14 @@ class AlertDetailScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // 1. Call service to mark the alert as acknowledged globally (using copyWith internally)
-                    AlertService.acknowledgeAlert(alert); 
+                  onPressed: () async {
+                    // 1. Call service to mark the alert as acknowledged globally
+                    await AlertService().acknowledgeAlert(alert.id); 
                     
-                    // 2. Pop the screen and pass 'true' to signal the list needs refreshing
-                    Navigator.of(context).pop(true);
+                    if (context.mounted) {
+                      // 2. Pop the screen and pass 'true' to signal the list needs refreshing
+                      Navigator.of(context).pop(true);
+                    }
                   },
                   icon: const Icon(Icons.check_circle_outline),
                   label: const Text('Acknowledge Alert'),

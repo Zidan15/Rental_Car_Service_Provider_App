@@ -6,10 +6,8 @@ import 'package:fleetwise/services/alert_service.dart';
 import 'package:fleetwise/widgets/status_badge.dart';
 import 'package:fleetwise/widgets/empty_state.dart';
 import 'package:fleetwise/screens/alert_detail_screen.dart';
-import 'package:fleetwise/theme.dart';
 
 class AlertsScreen extends StatefulWidget {
-  // ✅ ADDED: Callback to notify the parent/main screen to refresh the count
   final VoidCallback? onAlertCountChanged;
 
   const AlertsScreen({super.key, this.onAlertCountChanged});
@@ -19,22 +17,13 @@ class AlertsScreen extends StatefulWidget {
 }
 
 class _AlertsScreenState extends State<AlertsScreen> {
-  List<Alert> _alerts = [];
+  final AlertService _alertService = AlertService(); // Instance of service
   
-  @override
-  void initState() {
-    super.initState();
-    _fetchCriticalAlerts();
-  }
-
-  void _fetchCriticalAlerts() {
-    final allAlerts = AlertService.getMockAlerts();
-    _alerts = allAlerts
-        .where((a) => a.severity == AlertSeverity.critical && !a.acknowledged)
-        .toList();
-  }
+  // We no longer need local state for alerts list because StreamBuilder handles it.
 
   void _navigateToDetail(Alert alert) async {
+    // We don't need to check _isLoading here because the stream handles data availability
+    
     final bool? wasAcknowledged = await Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => AlertDetailScreen(alert: alert),
@@ -45,42 +34,71 @@ class _AlertsScreenState extends State<AlertsScreen> {
     );
 
     if (wasAcknowledged == true) {
-      setState(() {
-        _alerts.removeWhere((a) => a.id == alert.id);
-      });
+      // With StreamBuilder, we don't need to manually refresh! 
+      // The delete operation in the database will automatically trigger a new stream event.
       
-      // ✅ TRIGGER CALLBACK: Notify the MainNavigationScreen to rebuild the Fleet tab
+      // We might still want to notify the parent to update the badge
       widget.onAlertCountChanged?.call(); 
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-        children: [
-          Expanded(
-            child: _alerts.isEmpty
-              ? const EmptyState(
+    return StreamBuilder<List<Alert>>(
+      stream: _alertService.getAlertsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+           return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+
+        final allAlerts = snapshot.data ?? [];
+        // Filter locally if needed, though the stream could also filter.
+        // The user wants to see active alerts.
+        final activeAlerts = allAlerts.where((a) => !a.acknowledged).toList();
+
+        if (activeAlerts.isEmpty) {
+          return const Column(
+            children: [
+              Expanded(
+                child: EmptyState(
                   icon: Icons.notifications_outlined,
                   message: 'No active alerts', 
                   subtitle: 'Everything\'s running smoothly!',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: _alerts.length,
-                  itemBuilder: (context, index) {
-                    final alert = _alerts[index];
-                    return _AlertCard(
-                      alert: alert,
-                      onTap: () => _navigateToDetail(alert),
-                    );
-                  },
                 ),
-          ),
-        ],
-      );
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: activeAlerts.length,
+                itemBuilder: (context, index) {
+                  final alert = activeAlerts[index];
+                  return _AlertCard(
+                    alert: alert,
+                    onTap: () => _navigateToDetail(alert),
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
+
+// --------------------------------------------------------
+// --- AlertCard and Helper Functions remain unchanged ---
+// --------------------------------------------------------
 
 class _AlertCard extends StatelessWidget {
   final Alert alert;
@@ -99,14 +117,15 @@ class _AlertCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
+          // Logic for acknowledged/unacknowledged color remains the same
           color: alert.acknowledged
             ? theme.cardTheme.color
-            : _getSeverityColor(alert.severity).withOpacity(0.05),
+            : _getSeverityColor(alert.severity).withAlpha(13),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: alert.acknowledged
               ? Colors.transparent
-              : _getSeverityColor(alert.severity).withOpacity(0.2),
+              : _getSeverityColor(alert.severity).withAlpha(51),
           ),
         ),
         child: Row(
@@ -128,7 +147,7 @@ class _AlertCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          alert.vehicleName,
+                          alert.vehicleName, // This uses the enriched name from the service
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -148,7 +167,7 @@ class _AlertCard extends StatelessWidget {
                   Text(
                     timeAgo,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.secondary.withOpacity(0.7),
+                      color: theme.colorScheme.secondary.withAlpha(179),
                     ),
                   ),
                 ],
@@ -156,7 +175,7 @@ class _AlertCard extends StatelessWidget {
             ),
             Icon(
               Icons.chevron_right,
-              color: theme.colorScheme.secondary.withOpacity(0.4),
+              color: theme.colorScheme.secondary.withAlpha(102),
             ),
           ],
         ),

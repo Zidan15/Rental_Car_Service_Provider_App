@@ -1,49 +1,98 @@
-// In lib/models/alert.dart
+// lib/models/alert.dart
 
-  // ... (Your class properties and constructor stay the same) ...
-  // ... (Your toJson and copyWith stay the same) ...
+// --- ADDED ENUM ---
+enum AlertSeverity { critical, warning, info } 
+// ------------------
 
-  // REPLACE your old fromJson with this new one
+class Alert {
+  final String id;
+  final String vehicleId;
+  final String vehicleName;
+  final String sensorType;
+  final AlertSeverity severity;
+  final double reading;
+  final double threshold;
+  final DateTime timestamp;
+  final bool acknowledged;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  Alert({
+    required this.id,
+    required this.vehicleId,
+    required this.vehicleName,
+    required this.sensorType,
+    required this.severity,
+    required this.reading,
+    required this.threshold,
+    required this.timestamp,
+    this.acknowledged = false,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  // Helper to get severity from string names (used in status_badge)
+  AlertSeverity get calculatedSeverity =>
+      AlertSeverity.values.firstWhere((e) => e.name == severity.name); 
+
+  // --- UPDATED FROMJSON ---
   factory Alert.fromJson(Map<String, dynamic> json) {
+    // Note: All custom fields (vehicleName, severity, threshold) will be calculated in the service
+    // and updated using copyWith, or calculated here based on raw data.
     
-    // --- Translate from DB to App ---
-    String sensorType = json['alert_type'] as String;
-    String status = json['status'] as String;
-    // The 'value' in your DB is a string, but your model needs a double
+    // We will calculate severity and threshold here based on the database data.
+    String sensorType = json['alert_type'] as String? ?? 'info';
     double reading = double.tryParse(json['value'] as String? ?? '0.0') ?? 0.0;
-
-    // --- Business Logic ---
-    // We must calculate severity and threshold, as they aren't in the DB
+    
     double threshold = 0.0;
-    AlertSeverity severity = AlertSeverity.info;
+    AlertSeverity calculatedSeverity = AlertSeverity.info;
 
+    // Simplified business logic for severity:
     if (sensorType == 'Alcohol Sensor') {
       threshold = 0.08;
-      if (reading > threshold) severity = AlertSeverity.critical;
+      if (reading > threshold) calculatedSeverity = AlertSeverity.critical;
     } else if (sensorType == 'Engine Temperature') {
       threshold = 100.0;
-      if (reading > threshold) severity = AlertSeverity.critical;
+      if (reading > threshold) calculatedSeverity = AlertSeverity.critical;
     } else if (sensorType == 'Battery Voltage') {
-        threshold = 12.0;
-        if (reading < threshold) severity = AlertSeverity.warning;
+       threshold = 12.0;
+       if (reading < threshold) calculatedSeverity = AlertSeverity.warning;
     }
-    // Add more rules here for other sensor types
 
     return Alert(
-      id: json['id'] as String,
-      vehicleId: json['vehicle_id'] as String, // DB snake_case -> app camelCase
-      timestamp: DateTime.parse(json['timestamp']),
+      // We assume the DB returns UUID as String 'id' (PK)
+      id: json['id'] as String, 
+      vehicleId: json['vehicle_id'] as String,
+      vehicleName: 'Unknown', // Placeholder, will be updated in service
       sensorType: sensorType,
-      reading: reading, // Use the parsed double
-      acknowledged: status == 'acknowledged', // Convert string to bool
-      
-      // --- Data we don't have yet ---
-      vehicleName: 'Loading...', // We'll fetch this in the service
-      severity: severity, // Our calculated severity
-      threshold: threshold, // Our calculated threshold
-      createdAt: DateTime.parse(json['timestamp']), // Use timestamp as created_at
-      updatedAt: DateTime.parse(json['timestamp']), // Use timestamp as updated_at
+      severity: calculatedSeverity, // Calculated from raw data
+      reading: reading,
+      threshold: threshold, // Calculated from raw data
+      timestamp: DateTime.parse(json['timestamp']),
+      acknowledged: json['status'] == 'acknowledged', // Convert status string to bool
+      createdAt: DateTime.parse(json['timestamp']),
+      updatedAt: DateTime.parse(json['timestamp']),
     );
   }
 
-// ... (Your copyWith stays here) ...
+  // --- ADDED COPYWITH ---
+  Alert copyWith({
+    String? id, String? vehicleId, String? vehicleName, String? sensorType,
+    AlertSeverity? severity, double? reading, double? threshold, DateTime? timestamp,
+    bool? acknowledged, DateTime? createdAt, DateTime? updatedAt,
+  }) => Alert(
+    id: id ?? this.id,
+    vehicleId: vehicleId ?? this.vehicleId,
+    vehicleName: vehicleName ?? this.vehicleName,
+    sensorType: sensorType ?? this.sensorType,
+    severity: severity ?? this.severity,
+    reading: reading ?? this.reading,
+    threshold: threshold ?? this.threshold,
+    timestamp: timestamp ?? this.timestamp,
+    acknowledged: acknowledged ?? this.acknowledged,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  
+  // (Your toJson method can remain as-is for now, or be deleted if not used)
+}

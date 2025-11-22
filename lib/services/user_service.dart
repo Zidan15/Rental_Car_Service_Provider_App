@@ -12,7 +12,6 @@ class UserService {
         password: password,
       );
     } catch (e) {
-      // Re-throw the error to be caught in the UI
       rethrow; 
     }
   }
@@ -20,8 +19,8 @@ class UserService {
   // Sign Up (Updated to only handle auth)
   Future<void> signUp(String email, String password, String fullName, String company, String contactNumber) async {
     try {
-      // Only create the user in the auth system. Profile is created after email verification.
-      await supabase.auth.signUp(
+      // 1. Create the user in the auth system
+      final AuthResponse res = await supabase.auth.signUp(
         email: email,
         password: password,
         data: {
@@ -30,8 +29,26 @@ class UserService {
           'contact_number': contactNumber,
         }
       );
+
+      // 2. IMMEDIATELY create the profile in the public.profiles table
+      // This bridges the gap between auth.users and public.profiles
+      final User? user = res.user;
+      if (user != null) {
+        // We try to insert. If it fails (e.g. RLS issue because user not logged in yet),
+        // we catch it silently so we don't block the signup flow.
+        // The fallback in getCurrentUser will handle it later.
+        try {
+          await supabase.from('profiles').insert({
+            'id': user.id,
+            'full_name': fullName,
+            'company': company,
+            'contact_number': contactNumber,
+          });
+        } catch (insertError) {
+          print('Error inserting profile immediately: $insertError');
+        }
+      }
     } catch (e) {
-      // Re-throw the error to be caught in the UI
       rethrow;
     }
   }
@@ -66,9 +83,6 @@ class UserService {
         });
       }
     } catch (e) {
-      // It's better to log this error than to re-throw it,
-      // as this function is a background task and shouldn't block the UI.
-      // Consider using a logging framework in a real app.
       print('Error in createProfileIfMissing: $e');
     }
   }
@@ -81,13 +95,53 @@ class UserService {
   // Get Current User Profile
   Future<Map<String, dynamic>> getCurrentUser() async {
     try {
-      final String userId = supabase.auth.currentUser!.id;
-      final Map<String, dynamic> userData = await supabase
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('No user logged in');
+      }
+      final String userId = user.id;
+      
+      // Use maybeSingle() to avoid PGRST116
+      Map<String, dynamic>? userData = await supabase
           .from('profiles')
           .select()
           .eq('id', userId)
-          .single();
-      return userData;
+          .maybeSingle();
+
+      // If profile is missing, create it from metadata
+      if (userData == null) {
+        await createProfileIfMissing();
+        // Retry fetching
+        userData = await supabase
+            .from('profiles')
+            .select()
+            .eq('id', userId)
+            .maybeSingle();
+      }
+
+      // Return data or a fallback object
+      return userData ?? {
+        'id': userId,
+        'full_name': user.userMetadata?['full_name'] ?? '',
+        'company': user.userMetadata?['company'] ?? '',
+        'contact_number': user.userMetadata?['contact_number'] ?? '',
+      };
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Update User Profile
+  Future<void> updateUserProfile(String fullName, String company, String contactNumber) async {
+    try {
+      final String userId = supabase.auth.currentUser!.id;
+      // Use upsert to create the record if it doesn't exist, or update it if it does.
+      await supabase.from('profiles').upsert({
+        'id': userId,
+        'full_name': fullName,
+        'company': company,
+        'contact_number': contactNumber,
+      });
     } catch (e) {
       rethrow;
     }

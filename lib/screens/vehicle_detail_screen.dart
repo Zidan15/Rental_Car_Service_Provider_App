@@ -5,7 +5,7 @@ import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/models/sensor_reading.dart';
 import 'package:fleetwise/services/vehicle_service.dart'; // New Import
 import 'package:fleetwise/widgets/status_badge.dart';
-// import 'package:fleetwise/widgets/sparkline_chart.dart'; // Uncomment when ready
+import 'package:fleetwise/widgets/sparkline_chart.dart';
 import 'package:fleetwise/theme.dart';
 
 class VehicleDetailScreen extends StatelessWidget {
@@ -86,9 +86,9 @@ class _OverviewTabState extends State<_OverviewTab> {
 
     if (mounted) {
       setState(() {
-        _alcoholReadings = results[0] as List<SensorReading>;
-        _engineTempReadings = results[1] as List<SensorReading>;
-        _speedReadings = results[2] as List<SensorReading>;
+        _alcoholReadings = results[0];
+        _engineTempReadings = results[1];
+        _speedReadings = results[2];
         _isLoading = false;
       });
     }
@@ -206,7 +206,7 @@ class _GPSTab extends StatelessWidget {
             decoration: BoxDecoration(
               color: theme.cardTheme.color,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.secondary.withOpacity(0.1)),
+              border: Border.all(color: theme.colorScheme.secondary.withAlpha(26)),
             ),
             child: Center(
               child: Column(
@@ -260,7 +260,7 @@ class _PlaceholderTab extends StatelessWidget {
             Icon(
               Icons.videocam_outlined,
               size: 80,
-              color: theme.colorScheme.secondary.withOpacity(0.3),
+              color: theme.colorScheme.secondary.withAlpha(77),
             ),
             const SizedBox(height: 24),
             Text(

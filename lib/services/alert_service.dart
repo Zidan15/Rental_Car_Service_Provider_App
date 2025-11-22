@@ -1,28 +1,27 @@
 // lib/services/alert_service.dart
 import 'package:fleetwise/models/alert.dart';
 import 'package:fleetwise/main.dart'; // Import main.dart to get the 'supabase' helper
-import 'package:supabase_flutter/supabase_flutter.dart'; // Import for CountOption
+import 'package:supabase_flutter/supabase_flutter.dart'; // Re-add for PostgrestFilterBuilder
 
 class AlertService {
   
   /// Fetches the count of all 'new' alerts.
   Future<int> getActiveAlertsCount() async {
     try {
-      // Fetch alerts where status is 'new' and get the count
       final response = await supabase
           .from('alerts')
-          .select('id', const CountOption())
-          .eq('status', 'new');
-          
-      return response.count;
+          .select()
+          .eq('status', 'new')
+          .count();
+      final int count = response.count ?? 0;
+      return count;
     } catch (e) {
-      print('Error fetching alerts count: $e');
+      // Log the error or handle it appropriately
       return 0;
     }
   }
   
   /// Fetches the full list of alerts (newest first).
-  /// This also fetches the vehicle names to match your mock data.
   Future<List<Alert>> getAlerts() async {
     try {
       // 1. Fetch all alerts
@@ -38,7 +37,7 @@ class AlertService {
       // 2. Fetch all vehicles (just to get their names)
       final vehicleData = await supabase
           .from('vehicles')
-          .select('id, brand, model, year'); // Only get what we need
+          .select('id, brand, model, year');
 
       // 3. Create a quick lookup map of Vehicle ID -> Vehicle Name
       final vehicleMap = {
@@ -56,20 +55,50 @@ class AlertService {
       return enrichedAlerts;
 
     } catch (e) {
-      print('Error fetching alerts: $e');
+      // Log the error or handle it appropriately
       return [];
     }
   }
 
-  /// Acknowledges an alert by updating its status in the database.
+  /// Returns a real-time stream of alerts.
+  Stream<List<Alert>> getAlertsStream() {
+    return supabase
+        .from('alerts')
+        .stream(primaryKey: ['id'])
+        .order('timestamp', ascending: false)
+        .asyncMap((data) async {
+          // 1. Convert to Alert objects
+          final alerts = data.map((json) => Alert.fromJson(json)).toList();
+
+          // 2. Fetch vehicles for enrichment
+          // Note: In a production app, you might cache this or use a separate stream for vehicles.
+          final vehicleData = await supabase
+              .from('vehicles')
+              .select('id, brand, model, year');
+          
+          final vehicleMap = {
+            for (var v in (vehicleData as List<dynamic>)) 
+              v['id']: "${v['year']} ${v['brand']} ${v['model']}"
+          };
+
+          // 3. Enrich
+          return alerts.map((alert) {
+            return alert.copyWith(
+              vehicleName: vehicleMap[alert.vehicleId] ?? 'Unknown Vehicle'
+            );
+          }).toList();
+        });
+  }
+
+  /// Acknowledges an alert by DELETING it from the database.
   Future<void> acknowledgeAlert(String alertId) async {
     try {
       await supabase
           .from('alerts')
-          .update({'status': 'acknowledged'})
+          .delete()
           .eq('id', alertId);
     } catch (e) {
-      print('Error acknowledging alert: $e');
+      // Log the error or handle it appropriately
       rethrow;
     }
   }

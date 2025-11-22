@@ -10,8 +10,8 @@ Future<void> main() async { // 2. MODIFY THIS LINE (to add async)
 
   await Supabase.initialize(
     // Get these from your Supabase Project: Settings > API
-    url: 'YOUR_SUPABASE_URL', 
-    anonKey: 'YOUR_SUPABASE_ANON_KEY',
+    url: 'https://ojmzdmtpxdoaisvtefln.supabase.co', 
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpkbXRweGRvYWlzdnRlZmxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMTg1NTQsImV4cCI6MjA3ODU5NDU1NH0.YPU2PxWMo_9gPKuH23WaO1RVjMsQZLi8By00b4iA3rM',
   );
 
   runApp(const MyApp());

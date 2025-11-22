@@ -133,7 +133,7 @@ class _FleetScreenState extends State<FleetScreen> {
               padding: const EdgeInsets.only(top: 10, bottom: 10, left: 10, right: 20),
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(color: theme.colorScheme.secondary.withOpacity(0.1)),
+                  bottom: BorderSide(color: theme.colorScheme.secondary.withAlpha(26)),
                 ),
               ),
               child: Row(
@@ -299,7 +299,7 @@ class _VehicleCard extends StatelessWidget {
                         Text(
                           'Last reading: $timeAgo', // This uses real data
                           style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.secondary.withOpacity(0.7),
+                              color: theme.colorScheme.secondary.withAlpha(179),
                           ),
                         ),
                       ],
@@ -307,7 +307,7 @@ class _VehicleCard extends StatelessWidget {
                   ),
                   Icon(
                     Icons.chevron_right,
-                    color: theme.colorScheme.secondary.withOpacity(0.4),
+                    color: theme.colorScheme.secondary.withAlpha(102),
                   ),
                 ],
             ),

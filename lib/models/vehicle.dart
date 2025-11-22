@@ -14,6 +14,8 @@ class Vehicle {
   final String color;
   final String plateNumber;
   final String? imageUrl;
+  final double latitude;
+  final double longitude;
   
   // These come from the 'sensor_data' table
   final VehicleStatus status;
@@ -37,6 +39,8 @@ class Vehicle {
     required this.alcoholLevel,
     required this.engineTemp,
     required this.speed,
+    required this.latitude,
+    required this.longitude,
   });
 
   // Helper to show "2022 Toyota Corolla"
@@ -51,6 +55,8 @@ class Vehicle {
     final double alcohol = (json['alcohol_level'] as num?)?.toDouble() ?? 0.0;
     final double temp = (json['engine_temperature'] as num?)?.toDouble() ?? 0.0;
     final double spd = (json['speed'] as num?)?.toDouble() ?? 0.0;
+    final double lat = (json['latitude'] as num?)?.toDouble() ?? 0.0;
+    final double lon = (json['longitude'] as num?)?.toDouble() ?? 0.0;
     final DateTime lastRead = json['created_at'] != null 
         ? DateTime.parse(json['created_at']) 
         : DateTime.now(); // Use now as a fallback
@@ -81,6 +87,8 @@ class Vehicle {
       alcoholLevel: alcohol,
       engineTemp: temp,
       speed: spd,
+      latitude: lat,
+      longitude: lon,
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fleetwise/screens/fleet_screen.dart';
 import 'package:fleetwise/screens/alerts_screen.dart';
 import 'package:fleetwise/screens/add_vehicle_screen.dart';
+import 'package:fleetwise/screens/bookings_screen.dart'; // ✅ Import BookingsScreen
 import 'package:fleetwise/screens/profile_screen.dart';
 import 'package:fleetwise/screens/login_screen.dart'; 
 import 'package:fleetwise/screens/terms_and_conditions_screen.dart';
@@ -38,20 +39,9 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {});
   }
 
-  late final List<Widget> _screens;
-
   @override
   void initState() {
     super.initState();
-    _screens = [
-      // ✅ MODIFIED: Assign the mutable key here
-      FleetScreen(key: _fleetKey, onAlertsTap: () => selectTab(1)), 
-      
-      // Pass the callback function to AlertsScreen
-      AlertsScreen(onAlertCountChanged: _onAlertsCountChange),
-      
-      const AddVehicleScreen(),
-    ];
   }
 
   // Function to handle the Log Out action
@@ -69,7 +59,8 @@ class _MainNavigationState extends State<MainNavigation> {
     // NOTE: We must regenerate the screen list in build() to use the new key
     final List<Widget> currentScreens = [
       // ✅ CRUCIAL: Use the stateful key here in the build method
-      FleetScreen(key: _fleetKey, onAlertsTap: () => selectTab(1)), 
+      FleetScreen(key: _fleetKey, onAlertsTap: () => selectTab(2)), // Update to index 2 (Alerts)
+      const BookingsScreen(), // ✅ New Bookings Screen at index 1
       AlertsScreen(onAlertCountChanged: _onAlertsCountChange),
       const AddVehicleScreen(),
     ];
@@ -92,7 +83,7 @@ class _MainNavigationState extends State<MainNavigation> {
               decoration: BoxDecoration(
                 color: theme.colorScheme.primary,
               ),
-              child: const Text('Fleetwise Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+              child: const Text('RENT.GOA', style: TextStyle(color: Colors.white, fontSize: 24)),
             ),
             ListTile(
               leading: const Icon(Icons.person),
@@ -159,7 +150,7 @@ class _MainNavigationState extends State<MainNavigation> {
         decoration: BoxDecoration(
           border: Border(
             top: BorderSide(
-              color: theme.colorScheme.secondary.withOpacity(0.1), 
+              color: theme.colorScheme.secondary.withAlpha(26), 
               width: 0.5,
             ),
           ),
@@ -180,6 +171,12 @@ class _MainNavigationState extends State<MainNavigation> {
               icon: Icon(Icons.directions_car_outlined),
               activeIcon: Icon(Icons.directions_car),
               label: 'FLEET',
+            ),
+            // ✅ New Bookings Item
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_today_outlined),
+              activeIcon: Icon(Icons.calendar_today),
+              label: 'BOOKINGS',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.warning_amber_outlined),
@@ -202,8 +199,10 @@ class _MainNavigationState extends State<MainNavigation> {
       case 0:
         return 'FLEET OVERVIEW';
       case 1:
-        return 'ALERTS';
+        return 'BOOKINGS & LISTINGS'; // ✅ New Title
       case 2:
+        return 'ALERTS';
+      case 3:
         return 'ADD VEHICLE';
       default:
         return 'FLEETWISE';

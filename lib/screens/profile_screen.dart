@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fleetwise/services/user_service.dart';
-import 'package:fleetwise/models/user.dart';
 import 'package:fleetwise/screens/login_screen.dart';
+import 'package:fleetwise/main.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,21 +12,48 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _companyController;
-  late TextEditingController _contactController;
-  late TextEditingController _emailController;
-  late User _user;
+  final _nameController = TextEditingController();
+  final _companyController = TextEditingController();
+  final _contactController = TextEditingController();
+  final _emailController = TextEditingController();
+  
+  bool _loading = true;
+  Map<String, dynamic>? _user;
+  final _userService = UserService();
 
   @override
   void initState() {
     super.initState();
-    _user = UserService.getMockUser();
-    _nameController = TextEditingController(text: _user.name);
-    _companyController = TextEditingController(text: _user.company);
-    _contactController = TextEditingController(text: _user.contactNumber);
-    _emailController = TextEditingController(text: _user.email);
+    _loadUserProfile();
   }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final userData = await _userService.getCurrentUser();
+      setState(() {
+        _user = userData;
+        _nameController.text = _user?['full_name'] ?? '';
+        _companyController.text = _user?['company'] ?? '';
+        _contactController.text = _user?['contact_number'] ?? '';
+        // Email is not in the profiles table, but we can get it from the auth user
+        _emailController.text = supabase.auth.currentUser?.email ?? '';
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading profile: ${e.toString()}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  bool _isSaving = false;
 
   @override
   void dispose() {
@@ -37,18 +64,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  void _saveProfile() {
+  Future<void> _saveProfile() async {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile saved successfully (mock only)'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+      setState(() {
+        _isSaving = true;
+      });
+
+      try {
+        await _userService.updateUserProfile(
+          _nameController.text,
+          _companyController.text,
+          _contactController.text,
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile saved successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving profile: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      } finally {
+        setState(() {
+          _isSaving = false;
+        });
+      }
     }
   }
 
-  void _logout() {
+  void _logout() async {
+    await _userService.signOut();
+    if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
@@ -68,105 +122,113 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(
         title: const Text('PROFILE'),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Center(
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.person,
-                  size: 50,
-                  color: theme.colorScheme.primary,
-                ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  Center(
+                    child: Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.person,
+                        size: 50,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    'Personal Information',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _companyController,
+                    decoration: const InputDecoration(
+                      labelText: 'Company',
+                      prefixIcon: Icon(Icons.business_outlined),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter company name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _contactController,
+                    decoration: const InputDecoration(
+                      labelText: 'Contact Number',
+                      prefixIcon: Icon(Icons.phone_outlined),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter contact number';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    enabled: false,
+                  ),
+                  const SizedBox(height: 32),
+                  ElevatedButton(
+                    onPressed: _isSaving ? null : _saveProfile,
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Save Changes'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _logout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Logout'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                      side: BorderSide(color: theme.colorScheme.error.withAlpha(128)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
-            const SizedBox(height: 32),
-            Text(
-              'Personal Information',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Full Name',
-                prefixIcon: Icon(Icons.person_outline),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _companyController,
-              decoration: const InputDecoration(
-                labelText: 'Company',
-                prefixIcon: Icon(Icons.business_outlined),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter company name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _contactController,
-              decoration: const InputDecoration(
-                labelText: 'Contact Number',
-                prefixIcon: Icon(Icons.phone_outlined),
-              ),
-              keyboardType: TextInputType.phone,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter contact number';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email_outlined),
-              ),
-              keyboardType: TextInputType.emailAddress,
-              enabled: false,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _saveProfile,
-              child: const Text('Save Changes'),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout),
-              label: const Text('Logout'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: theme.colorScheme.error,
-                side: BorderSide(color: theme.colorScheme.error.withValues(alpha: 0.5)),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
     );
   }
 }

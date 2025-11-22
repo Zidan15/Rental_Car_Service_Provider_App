@@ -14,7 +14,7 @@ class VehicleService {
           .toList();
       return vehicles;
     } catch (e) {
-      print('Error fetching vehicles: $e');
+      // Log the error or handle it appropriately
       return [];
     }
   }
@@ -28,7 +28,7 @@ class VehicleService {
     try {
       await supabase.from('vehicles').insert(vehicleData);
     } catch (e) {
-      print('Error adding vehicle: $e');
+      // Log the error or handle it appropriately
       rethrow;
     }
   }
@@ -52,7 +52,7 @@ class VehicleService {
           .toList();
       return readings;
     } catch (e) {
-      print('Error fetching alcohol readings: $e');
+      // Log the error or handle it appropriately
       return [];
     }
   }
@@ -73,7 +73,7 @@ class VehicleService {
           .toList();
       return readings;
     } catch (e) {
-      print('Error fetching engine temp readings: $e');
+      // Log the error or handle it appropriately
       return [];
     }
   }
@@ -94,7 +94,7 @@ class VehicleService {
           .toList();
       return readings;
     } catch (e) {
-      print('Error fetching speed readings: $e');
+      // Log the error or handle it appropriately
       return [];
     }
   }
