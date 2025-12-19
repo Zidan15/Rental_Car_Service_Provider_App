@@ -183,12 +183,29 @@ class _FleetScreenState extends State<FleetScreen> {
                           Expanded(
                             child: GestureDetector(
                               onTap: widget.onAlertsTap, 
-                              child: KPICard(
-                                title: 'Active Alerts',
-                                // --- 8. USE REAL DATA ---
-                                value: '$_activeAlerts', // Uses real alert count
-                                icon: Icons.warning_amber,
-                                color: const Color.fromARGB(255, 245, 11, 11),
+                              child: StreamBuilder<List<dynamic>>(
+                                // Listen to the real-time stream of alerts to get the count
+                                stream: _alertService.getAlertsStream(),
+                                builder: (context, snapshot) {
+                                  // Default to 0 if waiting or error
+                                  int count = 0;
+                                  if (snapshot.hasData) {
+                                    // Filter for unacknowledged alerts
+                                    count = snapshot.data!.where((a) => !a.acknowledged).length;
+                                  } else if (snapshot.hasError) {
+                                    count = 0; // Or indicate error
+                                  } else {
+                                     // If we are waiting for the first stream event, use the initial fetched value if available
+                                     count = _activeAlerts; 
+                                  }
+                                  
+                                  return KPICard(
+                                    title: 'Active Alerts',
+                                    value: '$count',
+                                    icon: Icons.warning_amber,
+                                    color: const Color.fromARGB(255, 245, 11, 11),
+                                  );
+                                }
                               ),
                             ),
                           ),

@@ -26,14 +26,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   @override
   void dispose() {
-    _brandController.dispose();
     _modelController.dispose();
     _yearController.dispose();
-    _fuelTypeController.dispose();
-    _transmissionController.dispose();
-    _colorController.dispose();
     _plateController.dispose();
-  
     super.dispose();
   }
 
@@ -44,27 +39,23 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       });
 
       try {
-        // Create a new Vehicle object
-        // Note: We generate a temporary ID here, but Supabase might handle it if we omitted it.
-        // However, the Vehicle model requires an ID. 
-        // Ideally, we should let the DB generate it, but for now we'll generate a UUID.
         final newVehicle = Vehicle(
           id: const Uuid().v4(),
-          brand: _brandController.text.trim(),
+          brand: _brandController.text.trim(), // Still using controller text but setting it from dropdown
           model: _modelController.text.trim(),
           year: int.parse(_yearController.text.trim()),
           fuelType: _fuelTypeController.text.trim(),
           transmission: _transmissionController.text.trim(),
           color: _colorController.text.trim(),
           plateNumber: _plateController.text.trim(),
-          status: VehicleStatus.healthy, // Default status
+          status: VehicleStatus.healthy,
           lastReading: DateTime.now(),
           alcoholLevel: 0.0,
           engineTemp: 0.0,
           speed: 0.0,
           latitude: 0.0,
           longitude: 0.0,
-          imageUrl: null, // Placeholder for now
+          imageUrl: null,
         );
 
         await _vehicleService.addVehicle(newVehicle);
@@ -88,19 +79,20 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         _transmissionController.clear();
         _colorController.clear();
         _plateController.clear();
+        
+        // Reset dropdown values (controllers must be cleared manually if used, but for dropdowns we might need state vars if we weren't using controllers. 
+        // Wait, I will keep controllers and update their text on change, so clear() works fine!)
 
       } on PostgrestException catch (e) {
         if (!mounted) return;
         String errorMessage = 'Error adding vehicle: ${e.message}';
-        
         if (e.code == '23505') {
           errorMessage = 'A vehicle with this license plate already exists.';
         }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Theme.of(context).colorScheme.error,
+             content: Text(errorMessage),
+             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       } catch (e) {
@@ -122,9 +114,14 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   }
 
   @override
-  // 💥 NO Scaffold here. Returns only the content.
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Dropdown Lists
+    final brands = ['Toyota', 'Honda', 'Suzuki', 'Hyundai', 'Tata', 'Mahindra', 'Kia', 'BMW', 'Mercedes', 'Audi', 'Other'];
+    final fuelTypes = ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG'];
+    final transmissions = ['Automatic', 'Manual'];
+    final colors = ['White', 'Black', 'Silver', 'Grey', 'Red', 'Blue', 'Green', 'Yellow', 'Other'];
 
     return Form(
       key: _formKey,
@@ -138,21 +135,26 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          TextFormField(
-            controller: _brandController,
+          
+          // BRAND DROPDOWN
+          DropdownButtonFormField<String>(
             decoration: const InputDecoration(
               labelText: 'Brand',
-              hintText: 'e.g., Toyota',
               prefixIcon: Icon(Icons.business),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter brand';
-              }
-              return null;
+            items: brands.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (val) {
+              _brandController.text = val ?? '';
             },
+            validator: (value) => _brandController.text.isEmpty ? 'Please select brand' : null,
           ),
           const SizedBox(height: 16),
+          
           TextFormField(
             controller: _modelController,
             decoration: const InputDecoration(
@@ -160,14 +162,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               hintText: 'e.g., Corolla',
               prefixIcon: Icon(Icons.directions_car),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter model';
-              }
-              return null;
-            },
+            validator: (value) => value?.isEmpty ?? true ? 'Please enter model' : null,
           ),
           const SizedBox(height: 16),
+          
           TextFormField(
             controller: _yearController,
             decoration: const InputDecoration(
@@ -177,9 +175,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             ),
             keyboardType: TextInputType.number,
             validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter year';
-              }
+              if (value == null || value.isEmpty) return 'Please enter year';
               final year = int.tryParse(value);
               if (year == null || year < 1900 || year > DateTime.now().year + 1) {
                 return 'Please enter a valid year';
@@ -188,54 +184,67 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             },
           ),
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _fuelTypeController,
+          
+          // FUEL TYPE DROPDOWN
+          DropdownButtonFormField<String>(
             decoration: const InputDecoration(
               labelText: 'Fuel Type',
-              hintText: 'e.g., Petrol, Diesel, Electric',
               prefixIcon: Icon(Icons.local_gas_station),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter fuel type';
-              }
-              return null;
+            items: fuelTypes.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (val) {
+              _fuelTypeController.text = val ?? '';
             },
+            validator: (value) => _fuelTypeController.text.isEmpty ? 'Please select fuel type' : null,
           ),
           
-          // ✅ NEW TRANSMISSION FIELD
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _transmissionController,
+          
+          // TRANSMISSION DROPDOWN
+          DropdownButtonFormField<String>(
             decoration: const InputDecoration(
               labelText: 'Transmission',
-              hintText: 'e.g., Automatic, Manual',
-              prefixIcon: Icon(Icons.settings_outlined), // Common icon for transmission
+              prefixIcon: Icon(Icons.settings_outlined),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter transmission type';
-              }
-              return null;
+            items: transmissions.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (val) {
+              _transmissionController.text = val ?? '';
             },
+            validator: (value) => _transmissionController.text.isEmpty ? 'Please select transmission' : null,
           ),
           
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _colorController,
+          
+          // COLOR DROPDOWN
+          DropdownButtonFormField<String>(
             decoration: const InputDecoration(
               labelText: 'Color',
-              hintText: 'e.g., White, Black, Silver',
               prefixIcon: Icon(Icons.palette),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter color';
-              }
-              return null;
+            items: colors.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: (val) {
+              _colorController.text = val ?? '';
             },
+            validator: (value) => _colorController.text.isEmpty ? 'Please select color' : null,
           ),
+          
           const SizedBox(height: 16),
+          
           TextFormField(
             controller: _plateController,
             decoration: const InputDecoration(
@@ -243,12 +252,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               hintText: 'e.g., GA-01-AB-1234',
               prefixIcon: Icon(Icons.badge),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter plate number';
-              }
-              return null;
-            },
+            validator: (value) => value?.isEmpty ?? true ? 'Please enter plate number' : null,
           ),
           
           const SizedBox(height: 24),
