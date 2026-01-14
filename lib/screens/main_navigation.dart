@@ -7,6 +7,7 @@ import 'package:fleetwise/screens/profile_screen.dart';
 import 'package:fleetwise/screens/login_screen.dart'; 
 import 'package:fleetwise/screens/terms_and_conditions_screen.dart';
 import 'package:fleetwise/screens/about_rent_goa_screen.dart';
+import 'package:fleetwise/screens/earnings_screen.dart';
 
 
 class MainNavigation extends StatefulWidget {
@@ -93,6 +94,18 @@ class _MainNavigationState extends State<MainNavigation> {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => const ProfileScreen(), 
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.account_balance_wallet),
+              title: const Text('Earnings'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const EarningsScreen(),
                   ),
                 );
               },

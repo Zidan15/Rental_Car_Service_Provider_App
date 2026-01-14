@@ -3,15 +3,113 @@
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/models/sensor_reading.dart';
-import 'package:fleetwise/services/vehicle_service.dart'; // New Import
+import 'package:fleetwise/services/vehicle_service.dart';
 import 'package:fleetwise/widgets/status_badge.dart';
 import 'package:fleetwise/widgets/sparkline_chart.dart';
 import 'package:fleetwise/theme.dart';
+import 'package:fleetwise/screens/add_vehicle_screen.dart';
 
-class VehicleDetailScreen extends StatelessWidget {
+class VehicleDetailScreen extends StatefulWidget {
   final Vehicle vehicle;
 
   const VehicleDetailScreen({super.key, required this.vehicle});
+
+  @override
+  State<VehicleDetailScreen> createState() => _VehicleDetailScreenState();
+}
+
+class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
+  late Vehicle _vehicle;
+  final VehicleService _vehicleService = VehicleService();
+  bool _isDeleting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _vehicle = widget.vehicle;
+  }
+
+  Future<void> _navigateToEdit() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => AddVehicleScreen(vehicleToEdit: _vehicle),
+      ),
+    );
+
+    // If updated, refresh vehicle data
+    if (result == true) {
+      await _refreshVehicle();
+    }
+  }
+
+  Future<void> _refreshVehicle() async {
+    try {
+      final vehicles = await _vehicleService.getVehicles();
+      final updated = vehicles.firstWhere(
+        (v) => v.id == _vehicle.id,
+        orElse: () => _vehicle,
+      );
+      if (mounted) {
+        setState(() {
+          _vehicle = updated;
+        });
+      }
+    } catch (e) {
+      // Keep existing vehicle data on error
+    }
+  }
+
+  Future<void> _deleteVehicle() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Vehicle'),
+        content: Text(
+          'Are you sure you want to delete "${_vehicle.displayName}"?\n\n'
+          'This action cannot be undone. All sensor data and booking history for this vehicle will also be deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+
+    try {
+      await _vehicleService.deleteVehicle(_vehicle.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vehicle deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.of(context).pop(true); // Return true to indicate deletion
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting vehicle: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +117,25 @@ class VehicleDetailScreen extends StatelessWidget {
       length: 4, 
       child: Scaffold(
         appBar: AppBar(
-          title: Text(vehicle.displayName),
+          title: Text(_vehicle.displayName),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: 'Edit Vehicle',
+              onPressed: _isDeleting ? null : _navigateToEdit,
+            ),
+            IconButton(
+              icon: _isDeleting 
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.delete_outline),
+              tooltip: 'Delete Vehicle',
+              onPressed: _isDeleting ? null : _deleteVehicle,
+            ),
+          ],
           bottom: const TabBar(
             isScrollable: true,
             tabs: [
@@ -32,18 +148,17 @@ class VehicleDetailScreen extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            // This is now the Stateful widget that fetches data
-            _OverviewTab(vehicle: vehicle), 
+            _OverviewTab(vehicle: _vehicle), 
             _PlaceholderTab(message: 'Dashcam footage will appear here'),
             _PlaceholderTab(message: 'Internal camera footage will appear here'),
-            // This now uses the live GPS coordinates
-            _GPSTab(vehicle: vehicle), 
+            _GPSTab(vehicle: _vehicle), 
           ],
         ),
       ),
     );
   }
 }
+
 
 // --------------------------------------------------------
 // --- OVERVIEW TAB: CONVERTED TO STATEFUL FOR DATA FETCH ---
@@ -116,7 +231,9 @@ class _OverviewTabState extends State<_OverviewTab> {
               _InfoItem(label: 'Brand', value: vehicle.brand),
               _InfoItem(label: 'Model', value: vehicle.model),
               _InfoItem(label: 'Year', value: vehicle.year.toString()),
+              _InfoItem(label: 'Category', value: vehicle.category ?? 'N/A'),
               _InfoItem(label: 'Fuel Type', value: vehicle.fuelType),
+              _InfoItem(label: 'Transmission', value: vehicle.transmission),
               _InfoItem(label: 'Color', value: vehicle.color),
             ],
           ),

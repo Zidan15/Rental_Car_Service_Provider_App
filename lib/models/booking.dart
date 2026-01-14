@@ -10,7 +10,10 @@ class Booking {
   
   // Optional: Renter details if joined
   final String? renterName;
+  final String? renterPhone;
   final String? vehicleName;
+  final String? vehiclePlate;
+  final String? pickupLocation;
 
   Booking({
     required this.id,
@@ -22,7 +25,10 @@ class Booking {
     required this.status,
     required this.createdAt,
     this.renterName,
+    this.renterPhone,
     this.vehicleName,
+    this.vehiclePlate,
+    this.pickupLocation,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -35,11 +41,14 @@ class Booking {
       totalPrice: (json['total_price'] as num).toDouble(),
       status: json['status'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
+      pickupLocation: json['pickup_location'] as String?,
       // Handle joined data if present
       renterName: json['profiles'] != null ? json['profiles']['full_name'] : null,
+      renterPhone: json['profiles'] != null ? json['profiles']['contact_number'] : null,
       vehicleName: json['vehicles'] != null 
           ? "${json['vehicles']['year']} ${json['vehicles']['brand']} ${json['vehicles']['model']}"
           : null,
+      vehiclePlate: json['vehicles'] != null ? json['vehicles']['plate_number'] : null,
     );
   }
 

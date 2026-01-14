@@ -13,9 +13,14 @@ class Vehicle {
   final String transmission;
   final String color;
   final String plateNumber;
+  final String? category;
   final String? imageUrl;
   final double latitude;
   final double longitude;
+  
+  // Listing fields (merged from listings table)
+  final double pricePerDay;
+  final bool isListed;
   
   // These come from the 'sensor_data' table
   final VehicleStatus status;
@@ -33,7 +38,10 @@ class Vehicle {
     required this.transmission,
     required this.color,
     required this.plateNumber,
+    this.category,
     this.imageUrl,
+    this.pricePerDay = 0.0,
+    this.isListed = false,
     required this.status,
     required this.lastReading,
     required this.alcoholLevel,
@@ -79,7 +87,10 @@ class Vehicle {
       transmission: json['transmission'] as String,
       color: json['color'] as String,
       plateNumber: json['plate_number'] as String,
+      category: json['category'] as String?,
       imageUrl: json['image_url'] as String?,
+      pricePerDay: (json['price_per_day'] as num?)?.toDouble() ?? 0.0,
+      isListed: json['is_listed'] as bool? ?? false,
       
       // Assign the live data
       status: calculatedStatus,
@@ -93,7 +104,6 @@ class Vehicle {
   }
 
   // We also need a toJson() for the 'Add Vehicle' screen
-  // You can ignore this for now, but it's good to have.
   Map<String, dynamic> toJson() {
     return {
       'brand': brand,
@@ -103,7 +113,10 @@ class Vehicle {
       'transmission': transmission,
       'color': color,
       'plate_number': plateNumber,
+      'category': category,
       'image_url': imageUrl,
+      'price_per_day': pricePerDay,
+      'is_listed': isListed,
     };
   }
 }

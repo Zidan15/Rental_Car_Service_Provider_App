@@ -4,24 +4,33 @@ import 'package:fleetwise/main.dart'; // To access 'supabase' client
 class BookingService {
   
   /// Fetches bookings for the current user's vehicles.
-  /// This requires a complex query: 
-  /// 1. Get all vehicles owned by user.
-  /// 2. Get bookings for those vehicles.
-  /// OR: Use a Supabase view or RLS policy that allows querying 'bookings' directly.
-  /// Assuming RLS allows "select * from bookings where vehicle_id in (select id from vehicles where owner_id = me)"
+  /// Two-step approach:
+  /// 1. Get all vehicle IDs owned by the current user.
+  /// 2. Get bookings where vehicle_id is in that list.
   Future<List<Booking>> getBookings() async {
     try {
       final userId = supabase.auth.currentUser!.id;
 
-      // We need to fetch bookings where the related vehicle belongs to the current user.
-      // Supabase query:
-      // select *, vehicles!inner(owner_id), profiles(full_name)
-      // where vehicles.owner_id = userId
+      // Step 1: Get all vehicle IDs owned by the current user
+      final vehicleData = await supabase
+          .from('vehicles')
+          .select('id')
+          .eq('owner_id', userId);
       
+      final vehicleIds = (vehicleData as List<dynamic>)
+          .map((v) => v['id'] as String)
+          .toList();
+      
+      // If user has no vehicles, return empty list
+      if (vehicleIds.isEmpty) {
+        return [];
+      }
+
+      // Step 2: Get bookings for those vehicles with renter info
       final data = await supabase
           .from('bookings')
-          .select('*, vehicles!inner(owner_id, brand, model, year), profiles(full_name)')
-          .eq('vehicles.owner_id', userId)
+          .select('*, vehicles(brand, model, year, plate_number), profiles(full_name, contact_number)')
+          .inFilter('vehicle_id', vehicleIds)
           .order('created_at', ascending: false);
 
       final bookings = (data as List<dynamic>)
@@ -36,7 +45,45 @@ class BookingService {
     }
   }
 
-  /// Updates the status of a booking (e.g., 'confirmed', 'rejected')
+  /// Fetches COMPLETED bookings for earnings calculation
+  Future<List<Booking>> getCompletedBookings() async {
+    try {
+      final userId = supabase.auth.currentUser!.id;
+
+      // Step 1: Get all vehicle IDs owned by the current user
+      final vehicleData = await supabase
+          .from('vehicles')
+          .select('id')
+          .eq('owner_id', userId);
+      
+      final vehicleIds = (vehicleData as List<dynamic>)
+          .map((v) => v['id'] as String)
+          .toList();
+      
+      if (vehicleIds.isEmpty) {
+        return [];
+      }
+
+      // Step 2: Get only completed bookings
+      final data = await supabase
+          .from('bookings')
+          .select('*, vehicles(brand, model, year, plate_number), profiles(full_name, contact_number)')
+          .inFilter('vehicle_id', vehicleIds)
+          .eq('status', 'completed')
+          .order('end_date', ascending: false);
+
+      final bookings = (data as List<dynamic>)
+          .map((json) => Booking.fromJson(json))
+          .toList();
+      
+      return bookings;
+    } catch (e) {
+      print('Error fetching completed bookings: $e');
+      return [];
+    }
+  }
+
+  /// Updates the status of a booking (e.g., 'confirmed', 'rejected', 'cancelled')
   Future<void> updateBookingStatus(String bookingId, String status) async {
     try {
       await supabase

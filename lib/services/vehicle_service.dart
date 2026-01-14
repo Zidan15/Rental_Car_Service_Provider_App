@@ -14,7 +14,8 @@ class VehicleService {
           .toList();
       return vehicles;
     } catch (e) {
-      // Log the error or handle it appropriately
+      // Log the error so we can debug
+      print('Error fetching vehicles: $e');
       return [];
     }
   }
@@ -29,6 +30,54 @@ class VehicleService {
       await supabase.from('vehicles').insert(vehicleData);
     } catch (e) {
       // Log the error or handle it appropriately
+      rethrow;
+    }
+  }
+
+  /// Updates an existing vehicle in the database.
+  Future<void> updateVehicle(Vehicle vehicle) async {
+    final vehicleData = vehicle.toJson();
+
+    try {
+      await supabase
+          .from('vehicles')
+          .update(vehicleData)
+          .eq('id', vehicle.id);
+    } catch (e) {
+      print('Error updating vehicle: $e');
+      rethrow;
+    }
+  }
+
+  /// Toggles the listing status of a vehicle (publish/unpublish)
+  Future<void> toggleListing(String vehicleId, bool isListed, {double? pricePerDay}) async {
+    try {
+      final updateData = <String, dynamic>{
+        'is_listed': isListed,
+      };
+      if (pricePerDay != null) {
+        updateData['price_per_day'] = pricePerDay;
+      }
+      
+      await supabase
+          .from('vehicles')
+          .update(updateData)
+          .eq('id', vehicleId);
+    } catch (e) {
+      print('Error toggling listing: $e');
+      rethrow;
+    }
+  }
+
+  /// Deletes a vehicle from the database
+  Future<void> deleteVehicle(String vehicleId) async {
+    try {
+      await supabase
+          .from('vehicles')
+          .delete()
+          .eq('id', vehicleId);
+    } catch (e) {
+      print('Error deleting vehicle: $e');
       rethrow;
     }
   }

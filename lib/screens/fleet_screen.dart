@@ -46,6 +46,7 @@ class _FleetScreenState extends State<FleetScreen> {
   // --- 4. CREATE A FUNCTION TO LOAD DATA ---
   Future<void> _loadData() async {
     // Show loading spinner
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
@@ -60,6 +61,7 @@ class _FleetScreenState extends State<FleetScreen> {
     final results = await Future.wait(futures);
 
     // Update the state with the real data
+    if (!mounted) return;
     setState(() {
       _vehicles = results[0] as List<Vehicle>;
       _filteredVehicles = _vehicles;
@@ -92,9 +94,8 @@ class _FleetScreenState extends State<FleetScreen> {
     }
   }
 
-  void _navigateToDetail(Vehicle vehicle) {
-    // ... (This function is perfect, no change needed)
-    Navigator.of(context).push(
+  void _navigateToDetail(Vehicle vehicle) async {
+    final result = await Navigator.of(context).push<bool>(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => VehicleDetailScreen(vehicle: vehicle),
         transitionsBuilder: (context, animation, secondaryAnimation, child) =>
@@ -102,6 +103,11 @@ class _FleetScreenState extends State<FleetScreen> {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     );
+    
+    // Refresh list if vehicle was deleted or updated
+    if (result == true) {
+      _loadData();
+    }
   }
 
 
@@ -118,51 +124,69 @@ class _FleetScreenState extends State<FleetScreen> {
     // --- 6. CHECK FOR EMPTY STATE *AFTER* LOADING ---
     // This now correctly checks the REAL list
     if (_filteredVehicles.isEmpty && _searchController.text.isEmpty) {
-      return const EmptyState(
-        icon: Icons.directions_car_outlined,
-        message: 'No vehicles yet',
-        subtitle: 'Add one to get started',
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 100),
+            EmptyState(
+              icon: Icons.directions_car_outlined,
+              message: 'No vehicles yet',
+              subtitle: 'Pull down to refresh or add a vehicle',
+            ),
+          ],
+        ),
       );
     }
     
-    return Column(
-        children: [
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
           // Header for Maximized List 
           if (_isListMaximized)
-            Container(
-              padding: const EdgeInsets.only(top: 10, bottom: 10, left: 10, right: 20),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: theme.colorScheme.secondary.withAlpha(26)),
+            SliverToBoxAdapter(
+              child: Container(
+                padding: const EdgeInsets.only(top: 10, bottom: 10, left: 10, right: 20),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: theme.colorScheme.secondary.withAlpha(26)),
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  // The "Cancel" or Minimize button
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back), 
-                    onPressed: _toggleListMaximize,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Total Vehicles',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
+                child: Row(
+                  children: [
+                    // The "Cancel" or Minimize button
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back), 
+                      onPressed: _toggleListMaximize,
+                      color: theme.colorScheme.primary,
                     ),
-                  ),
-                  const Spacer(),
-                ],
+                    const SizedBox(width: 8),
+                    Text(
+                      'Total Vehicles',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    // Refresh button for desktop users
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Refresh',
+                      onPressed: _loadData,
+                    ),
+                  ],
+                ),
               ),
             ),
 
           // Header Content (KPIs and Search) - Hidden when maximized
-          AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              height: _isListMaximized ? 0 : null, 
-              padding: _isListMaximized ? EdgeInsets.zero : const EdgeInsets.all(20),
-              child: SingleChildScrollView( 
-                physics: const NeverScrollableScrollPhysics(),
+          if (!_isListMaximized)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
                 child: Column(
                     children: [
                       Row(
@@ -233,29 +257,35 @@ class _FleetScreenState extends State<FleetScreen> {
                     ],
                 ),
               ),
-          ),
+            ),
           
           // Vehicle List
-          Expanded(
-            child: _filteredVehicles.isEmpty
-                ? const EmptyState(
-                    icon: Icons.search_off,
-                    message: 'No vehicles found',
-                    subtitle: 'Try adjusting your search',
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.fromLTRB(20, _isListMaximized ? 0 : 20, 20, 20),
-                    itemCount: _filteredVehicles.length,
-                    itemBuilder: (context, index) {
-                      final vehicle = _filteredVehicles[index];
-                      return _VehicleCard(
-                        vehicle: vehicle,
-                        onTap: () => _navigateToDetail(vehicle),
-                      );
-                    },
-                  ),
-          ),
+          if (_filteredVehicles.isEmpty)
+            const SliverFillRemaining(
+              child: EmptyState(
+                icon: Icons.search_off,
+                message: 'No vehicles found',
+                subtitle: 'Try adjusting your search',
+              ),
+            )
+          else
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(20, _isListMaximized ? 0 : 0, 20, 20),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final vehicle = _filteredVehicles[index];
+                    return _VehicleCard(
+                      vehicle: vehicle,
+                      onTap: () => _navigateToDetail(vehicle),
+                    );
+                  },
+                  childCount: _filteredVehicles.length,
+                ),
+              ),
+            ),
         ],
+      ),
     );
   }
 }
@@ -313,11 +343,35 @@ class _VehicleCard extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
-                          'Last reading: $timeAgo', // This uses real data
-                          style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.colorScheme.secondary.withAlpha(179),
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'Last reading: $timeAgo',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.secondary.withAlpha(179),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text('•', style: TextStyle(color: theme.colorScheme.secondary.withAlpha(179))),
+                            const SizedBox(width: 8),
+                            // Show price or "Not Listed"
+                            if (vehicle.isListed)
+                              Text(
+                                '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            else
+                              Text(
+                                'Not Listed',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.secondary.withAlpha(128),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
