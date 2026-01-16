@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -26,13 +27,27 @@
   <meta name="apple-mobile-web-app-title" content="dreamflow_counter">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
-
-  <title>dreamflow_counter</title>
+  <title>RENT.GOA Provider</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Config for API Keys -->
+  <script src="config.js"></script>
+
+  <!-- Dynamic Google Maps Loading -->
+  <script>
+    if (typeof CONFIG !== 'undefined' && CONFIG.GOOGLE_MAPS_API_KEY) {
+      var script = document.createElement('script');
+      script.src = "https://maps.googleapis.com/maps/api/js?key=" + CONFIG.GOOGLE_MAPS_API_KEY + "&libraries=places";
+      script.async = true; // Recommend async loading
+      document.head.appendChild(script);
+    } else {
+      console.error("Google Maps API Key not found in config.js");
+    }
+  </script>
 </head>
+
 <body>
   <script src="flutter_bootstrap.js" async></script>
 </body>
+
 </html>

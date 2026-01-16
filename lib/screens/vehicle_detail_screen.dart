@@ -8,6 +8,7 @@ import 'package:fleetwise/widgets/status_badge.dart';
 import 'package:fleetwise/widgets/sparkline_chart.dart';
 import 'package:fleetwise/theme.dart';
 import 'package:fleetwise/screens/add_vehicle_screen.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -289,69 +290,136 @@ class _OverviewTabState extends State<_OverviewTab> {
 }
 
 // --------------------------------------------------------
-// --- GPS TAB: USING LIVE LAT/LON DATA ---
+// --- GPS TAB: REAL GOOGLE MAP IMPLEMENTATION ---
 // --------------------------------------------------------
-class _GPSTab extends StatelessWidget {
+class _GPSTab extends StatefulWidget {
   final Vehicle vehicle;
 
   const _GPSTab({required this.vehicle});
 
   @override
+  State<_GPSTab> createState() => _GPSTabState();
+}
+
+class _GPSTabState extends State<_GPSTab> {
+  GoogleMapController? _mapController;
+  
+  // Goa center coordinates
+  static const LatLng _goaCenter = LatLng(15.2993, 74.1240);
+  
+  // Goa bounds for restricting the map
+  static final LatLngBounds _goaBounds = LatLngBounds(
+    southwest: const LatLng(14.8, 73.6),
+    northeast: const LatLng(15.8, 74.5),
+  );
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
+
+  LatLng get _vehicleLocation {
+    // Use real vehicle coordinates if available, otherwise fall back to Goa center
+    if (widget.vehicle.latitude != 0.0 || widget.vehicle.longitude != 0.0) {
+      return LatLng(widget.vehicle.latitude, widget.vehicle.longitude);
+    }
+    return _goaCenter;
+  }
+
+  Set<Marker> get _markers {
+    return {
+      Marker(
+        markerId: MarkerId(widget.vehicle.id),
+        position: _vehicleLocation,
+        infoWindow: InfoWindow(
+          title: widget.vehicle.displayName,
+          snippet: widget.vehicle.plateNumber,
+        ),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      ),
+    };
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasRealData = widget.vehicle.latitude != 0.0 || widget.vehicle.longitude != 0.0;
     
-    // Format the real lat/lon
-    final String locationString = (vehicle.latitude == 0.0 && vehicle.longitude == 0.0)
-      ? 'No GPS data available.'
-      : 'Last known: ${vehicle.latitude.toStringAsFixed(4)}° N, ${vehicle.longitude.toStringAsFixed(4)}° E (Goa)';
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Vehicle Location',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+    return Column(
+      children: [
+        // Map container
+        Expanded(
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(0),
+              bottomRight: Radius.circular(0),
+            ),
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _vehicleLocation,
+                zoom: 12,
+              ),
+              markers: _markers,
+              onMapCreated: (controller) {
+                _mapController = controller;
+              },
+              mapType: MapType.normal,
+              myLocationEnabled: false,
+              zoomControlsEnabled: true,
+              mapToolbarEnabled: false,
+              cameraTargetBounds: CameraTargetBounds(_goaBounds),
+              minMaxZoomPreference: const MinMaxZoomPreference(8, 18),
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            height: 250,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: theme.cardTheme.color,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.secondary.withAlpha(26)),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+        ),
+        
+        // Info card at bottom
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.cardTheme.color,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(26),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  const Icon(
-                    Icons.location_on,
-                    size: 60,
-                    color: Colors.black, // Assuming primary is dark
+                  Icon(
+                    hasRealData ? Icons.gps_fixed : Icons.gps_off,
+                    size: 20,
+                    color: hasRealData ? Colors.green : theme.colorScheme.secondary,
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(width: 8),
                   Text(
-                    'Live Map Placeholder',
-                    style: theme.textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    locationString, // Uses the real data
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.secondary,
+                    hasRealData ? 'Live Location' : 'GPS Data Pending',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 8),
+              Text(
+                hasRealData
+                    ? '${widget.vehicle.latitude.toStringAsFixed(4)}° N, ${widget.vehicle.longitude.toStringAsFixed(4)}° E'
+                    : 'GPS data from IoT module (Phase 2)',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

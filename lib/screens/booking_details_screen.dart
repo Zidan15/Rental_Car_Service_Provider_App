@@ -4,6 +4,7 @@ import 'package:fleetwise/models/booking.dart';
 import 'package:fleetwise/services/booking_service.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final Booking booking;
@@ -276,6 +277,98 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
             ),
             
             const SizedBox(height: 16),
+            
+            // Pickup Location Section with Map
+            if (_booking.pickupLocation != null || _booking.pickupLat != null)
+              _SectionCard(
+                title: 'Pickup Location',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_booking.pickupLocation != null)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 18,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _booking.pickupLocation!,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                    if (_booking.pickupLat != null && _booking.pickupLng != null) ...[
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: SizedBox(
+                          height: 180,
+                          child: GoogleMap(
+                            initialCameraPosition: CameraPosition(
+                              target: LatLng(_booking.pickupLat!, _booking.pickupLng!),
+                              zoom: 14,
+                            ),
+                            markers: {
+                              Marker(
+                                markerId: const MarkerId('pickup'),
+                                position: LatLng(_booking.pickupLat!, _booking.pickupLng!),
+                                infoWindow: InfoWindow(
+                                  title: 'Pickup Location',
+                                  snippet: _booking.pickupLocation ?? 'Selected location',
+                                ),
+                              ),
+                            },
+                            mapType: MapType.normal,
+                            zoomControlsEnabled: false,
+                            scrollGesturesEnabled: false,
+                            rotateGesturesEnabled: false,
+                            tiltGesturesEnabled: false,
+                            myLocationEnabled: false,
+                            liteModeEnabled: true,
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 100,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.secondary.withAlpha(26),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.map_outlined,
+                                size: 32,
+                                color: theme.colorScheme.secondary,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'No coordinates available',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            
+            if (_booking.pickupLocation != null || _booking.pickupLat != null)
+              const SizedBox(height: 16),
             
             // Price & Status Section
             _SectionCard(

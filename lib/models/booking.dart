@@ -14,6 +14,8 @@ class Booking {
   final String? vehicleName;
   final String? vehiclePlate;
   final String? pickupLocation;
+  final double? pickupLat;
+  final double? pickupLng;
 
   Booking({
     required this.id,
@@ -29,6 +31,8 @@ class Booking {
     this.vehicleName,
     this.vehiclePlate,
     this.pickupLocation,
+    this.pickupLat,
+    this.pickupLng,
   });
 
   factory Booking.fromJson(Map<String, dynamic> json) {
@@ -42,6 +46,8 @@ class Booking {
       status: json['status'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       pickupLocation: json['pickup_location'] as String?,
+      pickupLat: json['pickup_lat'] != null ? (json['pickup_lat'] as num).toDouble() : null,
+      pickupLng: json['pickup_lng'] != null ? (json['pickup_lng'] as num).toDouble() : null,
       // Handle joined data if present
       renterName: json['profiles'] != null ? json['profiles']['full_name'] : null,
       renterPhone: json['profiles'] != null ? json['profiles']['contact_number'] : null,

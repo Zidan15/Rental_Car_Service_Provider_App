@@ -48,16 +48,13 @@ class Alert {
     AlertSeverity calculatedSeverity = AlertSeverity.info;
 
     // Simplified business logic for severity:
+    // ONLY Alcohol Sensor is critical now, per user request.
     if (sensorType == 'Alcohol Sensor') {
       threshold = 0.08;
       if (reading > threshold) calculatedSeverity = AlertSeverity.critical;
-    } else if (sensorType == 'Engine Temperature') {
-      threshold = 100.0;
-      if (reading > threshold) calculatedSeverity = AlertSeverity.critical;
-    } else if (sensorType == 'Battery Voltage') {
-       threshold = 12.0;
-       if (reading < threshold) calculatedSeverity = AlertSeverity.warning;
-    }
+    } 
+    // Other sensors (Engine Temp, Battery) are currently ignored for alerts
+    // as requested. They will default to 'info' severity.
 
     return Alert(
       // We assume the DB returns UUID as String 'id' (PK)

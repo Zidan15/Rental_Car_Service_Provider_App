@@ -32,6 +32,7 @@ class AlertService {
       
       final alerts = (alertData as List<dynamic>)
           .map((json) => Alert.fromJson(json))
+          .where((a) => a.sensorType == 'Alcohol Sensor') // Filter for Alcohol only
           .toList();
 
       // 2. Fetch all vehicles (just to get their names)
@@ -67,8 +68,11 @@ class AlertService {
         .stream(primaryKey: ['id'])
         .order('timestamp', ascending: false)
         .asyncMap((data) async {
-          // 1. Convert to Alert objects
-          final alerts = data.map((json) => Alert.fromJson(json)).toList();
+          // 1. Convert to Alert objects and Filter
+          final alerts = data
+              .map((json) => Alert.fromJson(json))
+              .where((a) => a.sensorType == 'Alcohol Sensor') // Filter for Alcohol only
+              .toList();
 
           // 2. Fetch vehicles for enrichment
           // Note: In a production app, you might cache this or use a separate stream for vehicles.
