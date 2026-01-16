@@ -4,7 +4,8 @@ import 'package:fleetwise/models/booking.dart';
 import 'package:fleetwise/services/booking_service.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class BookingDetailsScreen extends StatefulWidget {
   final Booking booking;
@@ -308,28 +309,34 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                         borderRadius: BorderRadius.circular(12),
                         child: SizedBox(
                           height: 180,
-                          child: GoogleMap(
-                            initialCameraPosition: CameraPosition(
-                              target: LatLng(_booking.pickupLat!, _booking.pickupLng!),
-                              zoom: 14,
-                            ),
-                            markers: {
-                              Marker(
-                                markerId: const MarkerId('pickup'),
-                                position: LatLng(_booking.pickupLat!, _booking.pickupLng!),
-                                infoWindow: InfoWindow(
-                                  title: 'Pickup Location',
-                                  snippet: _booking.pickupLocation ?? 'Selected location',
-                                ),
+                          child: FlutterMap(
+                            options: MapOptions(
+                              initialCenter: LatLng(_booking.pickupLat!, _booking.pickupLng!),
+                              initialZoom: 14.0,
+                              interactionOptions: const InteractionOptions(
+                                flags: InteractiveFlag.none, // Static map for preview
                               ),
-                            },
-                            mapType: MapType.normal,
-                            zoomControlsEnabled: false,
-                            scrollGesturesEnabled: false,
-                            rotateGesturesEnabled: false,
-                            tiltGesturesEnabled: false,
-                            myLocationEnabled: false,
-                            liteModeEnabled: true,
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'com.example.fleetwise',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(_booking.pickupLat!, _booking.pickupLng!),
+                                    width: 40,
+                                    height: 40,
+                                    child: const Icon(
+                                      Icons.location_on,
+                                      size: 40,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
                       ),

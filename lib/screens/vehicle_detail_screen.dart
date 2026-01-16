@@ -8,7 +8,9 @@ import 'package:fleetwise/widgets/status_badge.dart';
 import 'package:fleetwise/widgets/sparkline_chart.dart';
 import 'package:fleetwise/theme.dart';
 import 'package:fleetwise/screens/add_vehicle_screen.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   final Vehicle vehicle;
@@ -290,7 +292,7 @@ class _OverviewTabState extends State<_OverviewTab> {
 }
 
 // --------------------------------------------------------
-// --- GPS TAB: REAL GOOGLE MAP IMPLEMENTATION ---
+// --- GPS TAB: REAL OSM IMPLEMENTATION ---
 // --------------------------------------------------------
 class _GPSTab extends StatefulWidget {
   final Vehicle vehicle;
@@ -302,20 +304,20 @@ class _GPSTab extends StatefulWidget {
 }
 
 class _GPSTabState extends State<_GPSTab> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   
   // Goa center coordinates
   static const LatLng _goaCenter = LatLng(15.2993, 74.1240);
   
-  // Goa bounds for restricting the map
+  // Goa bounds for restricting the map (approximate for OSM)
   static final LatLngBounds _goaBounds = LatLngBounds(
-    southwest: const LatLng(14.8, 73.6),
-    northeast: const LatLng(15.8, 74.5),
+    const LatLng(14.8, 73.6),
+    const LatLng(15.8, 74.5),
   );
 
   @override
   void dispose() {
-    _mapController?.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -325,20 +327,6 @@ class _GPSTabState extends State<_GPSTab> {
       return LatLng(widget.vehicle.latitude, widget.vehicle.longitude);
     }
     return _goaCenter;
-  }
-
-  Set<Marker> get _markers {
-    return {
-      Marker(
-        markerId: MarkerId(widget.vehicle.id),
-        position: _vehicleLocation,
-        infoWindow: InfoWindow(
-          title: widget.vehicle.displayName,
-          snippet: widget.vehicle.plateNumber,
-        ),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      ),
-    };
   }
 
   @override
@@ -355,21 +343,40 @@ class _GPSTabState extends State<_GPSTab> {
               bottomLeft: Radius.circular(0),
               bottomRight: Radius.circular(0),
             ),
-            child: GoogleMap(
-              initialCameraPosition: CameraPosition(
-                target: _vehicleLocation,
-                zoom: 12,
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: _vehicleLocation,
+                initialZoom: 12.0,
+                minZoom: 8.0,
+                maxZoom: 18.0,
+                cameraConstraint: CameraConstraint.contain(
+                  bounds: _goaBounds,
+                ),
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                ),
               ),
-              markers: _markers,
-              onMapCreated: (controller) {
-                _mapController = controller;
-              },
-              mapType: MapType.normal,
-              myLocationEnabled: false,
-              zoomControlsEnabled: true,
-              mapToolbarEnabled: false,
-              cameraTargetBounds: CameraTargetBounds(_goaBounds),
-              minMaxZoomPreference: const MinMaxZoomPreference(8, 18),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.example.fleetwise',
+                ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _vehicleLocation,
+                      width: 60,
+                      height: 60,
+                      child: const Icon(
+                        Icons.location_on,
+                        size: 40,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

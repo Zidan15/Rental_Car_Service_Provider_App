@@ -29,21 +29,6 @@
 
   <title>RENT.GOA Provider</title>
   <link rel="manifest" href="manifest.json">
-
-  <!-- Config for API Keys -->
-  <script src="config.js"></script>
-
-  <!-- Dynamic Google Maps Loading -->
-  <script>
-    if (typeof CONFIG !== 'undefined' && CONFIG.GOOGLE_MAPS_API_KEY) {
-      var script = document.createElement('script');
-      script.src = "https://maps.googleapis.com/maps/api/js?key=" + CONFIG.GOOGLE_MAPS_API_KEY + "&libraries=places";
-      script.async = true; // Recommend async loading
-      document.head.appendChild(script);
-    } else {
-      console.error("Google Maps API Key not found in config.js");
-    }
-  </script>
 </head>
 
 <body>

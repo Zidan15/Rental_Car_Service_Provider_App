@@ -11,6 +11,3 @@ macos/
 test/
 windows/
 
-# Environment Variables
-.env
-web/config.js
