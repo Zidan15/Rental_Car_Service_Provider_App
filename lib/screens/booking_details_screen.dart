@@ -88,6 +88,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       case 'confirmed': return 'Accept Booking';
       case 'rejected': return 'Reject Booking';
       case 'cancelled': return 'Cancel Booking';
+      case 'completed': return 'Complete Trip';
       default: return 'Update Booking';
     }
   }
@@ -100,6 +101,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
         return 'Reject this booking request? The renter will be notified.';
       case 'cancelled': 
         return 'Cancel this confirmed booking? The renter will be notified and may expect a refund.';
+      case 'completed': 
+        return 'Mark this trip as completed? This confirms the vehicle has been returned and will add the earnings to your account.';
       default: 
         return 'Are you sure?';
     }
@@ -110,6 +113,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       case 'confirmed': return 'Accept';
       case 'rejected': return 'Reject';
       case 'cancelled': return 'Cancel Booking';
+      case 'completed': return 'Complete';
       default: return 'Confirm';
     }
   }
@@ -119,6 +123,7 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
       case 'confirmed': return 'accepted';
       case 'rejected': return 'rejected';
       case 'cancelled': return 'cancelled';
+      case 'completed': return 'completed';
       default: return 'updated';
     }
   }
@@ -441,17 +446,33 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                 ],
               ),
             ] else if (_booking.status == 'confirmed') ...[
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => _updateStatus('cancelled'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.orange,
-                    side: const BorderSide(color: Colors.orange),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _updateStatus('cancelled'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orange,
+                        side: const BorderSide(color: Colors.orange),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
                   ),
-                  child: const Text('Cancel Booking'),
-                ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _updateStatus('completed'),
+                      icon: const Icon(Icons.check_circle),
+                      label: const Text('Complete Trip'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ],

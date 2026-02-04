@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/vehicle.dart';
+import 'package:fleetwise/models/location.dart';
 import 'package:fleetwise/services/vehicle_service.dart';
+import 'package:fleetwise/services/location_service.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,8 +28,13 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _priceController = TextEditingController();
   
   final _vehicleService = VehicleService();
+  final _locationService = LocationService();
   bool _isLoading = false;
-  bool _isListed = true; // Default to listed
+  bool _isListed = true;
+  
+  List<ProviderLocation> _locations = [];
+  String? _selectedLocationId;
+  bool _locationsLoading = true;
 
   // Track if we're in edit mode
   bool get _isEditMode => widget.vehicleToEdit != null;
@@ -62,6 +69,18 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       _selectedTransmission = v.transmission;
       _selectedColor = v.color;
       _selectedCategory = v.category;
+      _selectedLocationId = v.locationId;
+    }
+    _loadLocations();
+  }
+
+  Future<void> _loadLocations() async {
+    final locations = await _locationService.getLocations();
+    if (mounted) {
+      setState(() {
+        _locations = locations;
+        _locationsLoading = false;
+      });
     }
   }
 
@@ -101,6 +120,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           category: _categoryController.text.trim().isEmpty ? null : _categoryController.text.trim(),
           pricePerDay: price,
           isListed: _isListed,
+          locationId: _selectedLocationId,
           status: VehicleStatus.healthy,
           lastReading: DateTime.now(),
           alcoholLevel: 0.0,
@@ -148,6 +168,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             _selectedTransmission = null;
             _selectedColor = null;
             _selectedCategory = null;
+            _selectedLocationId = null;
             _isListed = true;
           });
         }
@@ -191,7 +212,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
     final fuelTypes = ['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG'];
     final transmissions = ['Automatic', 'Manual'];
     final colors = ['White', 'Black', 'Silver', 'Grey', 'Red', 'Blue', 'Green', 'Yellow', 'Other'];
-    final categories = ['Hatchback', 'Sedan', 'Compact SUV', 'Full-Size SUV', 'MUV/7-Seater', 'Luxury/Premium', 'Convertible/Open-Top'];
+    final categories = ['Hatchback', 'Sedan', 'SUV'];
 
     // If in edit mode and value isn't in the list, add it
     if (_isEditMode) {
@@ -200,6 +221,9 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       }
       if (_selectedColor != null && !colors.contains(_selectedColor)) {
         colors.add(_selectedColor!);
+      }
+      if (_selectedCategory != null && !categories.contains(_selectedCategory)) {
+        categories.add(_selectedCategory!);
       }
     }
 
@@ -283,6 +307,35 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             },
             validator: (value) => _categoryController.text.isEmpty ? 'Please select category' : null,
           ),
+          const SizedBox(height: 16),
+
+          // LOCATION DROPDOWN
+          _locationsLoading
+              ? const LinearProgressIndicator()
+              : _locations.isEmpty
+                  ? Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline),
+                          SizedBox(width: 8),
+                          Expanded(child: Text('No locations. Add in Profile > Manage Locations.')),
+                        ],
+                      ),
+                    )
+                  : DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Vehicle Location',
+                        prefixIcon: Icon(Icons.location_on),
+                      ),
+                      value: _selectedLocationId,
+                      items: _locations.map((loc) => DropdownMenuItem(value: loc.id, child: Text(loc.name))).toList(),
+                      onChanged: (val) => setState(() => _selectedLocationId = val),
+                    ),
           const SizedBox(height: 16),
 
           // PRICE PER DAY

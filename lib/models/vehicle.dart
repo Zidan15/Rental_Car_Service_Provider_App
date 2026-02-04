@@ -22,6 +22,9 @@ class Vehicle {
   final double pricePerDay;
   final bool isListed;
   
+  // Location field
+  final String? locationId;
+  
   // These come from the 'sensor_data' table
   final VehicleStatus status;
   final DateTime lastReading;
@@ -42,6 +45,7 @@ class Vehicle {
     this.imageUrl,
     this.pricePerDay = 0.0,
     this.isListed = false,
+    this.locationId,
     required this.status,
     required this.lastReading,
     required this.alcoholLevel,
@@ -52,7 +56,8 @@ class Vehicle {
   });
 
   // Helper to show "2022 Toyota Corolla"
-  String get displayName => '$year $brand $model';
+  // Helper to show "Toyota Corolla" (Year removed to prevent overflow)
+  String get displayName => '$brand $model';
 
   // --- THIS IS THE IMPORTANT PART ---
   // This "factory" is a translator that turns the 
@@ -79,18 +84,19 @@ class Vehicle {
 
     // Create the Vehicle object with all the data
     return Vehicle(
-      id: json['id'] as String,
-      brand: json['brand'] as String,
-      model: json['model'] as String,
-      year: (json['year'] as num).toInt(),
-      fuelType: json['fuel_type'] as String,
-      transmission: json['transmission'] as String,
-      color: json['color'] as String,
-      plateNumber: json['plate_number'] as String,
-      category: json['category'] as String?,
+      id: json['id'] as String? ?? '',
+      brand: json['brand'] as String? ?? 'Unknown',
+      model: json['model'] as String? ?? 'Unknown',
+      year: (json['year'] as num?)?.toInt() ?? 0,
+      fuelType: json['fuel_type'] as String? ?? 'Unknown',
+      transmission: json['transmission'] as String? ?? 'Unknown',
+      color: json['color'] as String? ?? 'Unknown',
+      plateNumber: json['plate_number'] as String? ?? 'No Plate',
+      category: json['category'] as String?, // Source of truth
       imageUrl: json['image_url'] as String?,
       pricePerDay: (json['price_per_day'] as num?)?.toDouble() ?? 0.0,
       isListed: json['is_listed'] as bool? ?? false,
+      locationId: json['location_id'] as String?,
       
       // Assign the live data
       status: calculatedStatus,
@@ -117,6 +123,7 @@ class Vehicle {
       'image_url': imageUrl,
       'price_per_day': pricePerDay,
       'is_listed': isListed,
+      'location_id': locationId,
     };
   }
 }

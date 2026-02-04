@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:fleetwise/services/user_service.dart'; // 1. IMPORT USER SERVICE
 import 'package:supabase_flutter/supabase_flutter.dart'; // 2. IMPORT SUPABASE
+import 'package:fleetwise/main.dart'; // Import for global supabase client
+import 'package:fleetwise/screens/main_navigation.dart'; // Import for MainNavigation
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -64,15 +66,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
         _contactController.text.trim(),
       );
 
-      // If successful, show success message and pop back to login
+      // Check if auto-login happened (i.e. if email confirmation is disabled or optional)
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Account created! Please check your email to verify.'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop(); // Go back to LoginScreen
+        final currentUser = supabase.auth.currentUser;
+        
+        if (currentUser != null) {
+          // Auto-login successful
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created! Logging you in...'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          
+          // Navigate to MainNavigation and clear stack
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const MainNavigation()),
+            (route) => false,
+          );
+        } else {
+          // Email confirmation required
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created! Please check your email to verify.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.of(context).pop(); // Go back to LoginScreen
+        }
       }
 
     } on AuthException catch (e) {
@@ -90,18 +111,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('An unexpected error occurred.'),
+            content: Text('An unexpected error occurred: $e'),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
-    }
-
-    // Stop loading
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+    } finally {
+      // Stop loading
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

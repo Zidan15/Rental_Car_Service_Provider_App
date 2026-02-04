@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fleetwise/services/user_service.dart';
 import 'package:fleetwise/screens/login_screen.dart';
+import 'package:fleetwise/screens/manage_locations_screen.dart';
 import 'package:fleetwise/main.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -224,6 +225,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       foregroundColor: theme.colorScheme.error,
                       side: BorderSide(color: theme.colorScheme.error.withAlpha(128)),
                     ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
+                    'Business Settings',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    leading: const Icon(Icons.location_on),
+                    title: const Text('Manage Locations'),
+                    subtitle: const Text('Add pickup points for vehicles'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ManageLocationsScreen())),
+                    tileColor: theme.cardTheme.color,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   const SizedBox(height: 20),
                 ],
