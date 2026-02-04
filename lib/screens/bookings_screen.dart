@@ -173,7 +173,7 @@ class _BookingRequestsTabState extends State<_BookingRequestsTab> {
                     final booking = _bookings[index];
                     return _BookingCard(
                       booking: booking,
-                      onAccept: () => _updateStatus(booking.id, 'confirmed'),
+                      onAccept: () => _updateStatus(booking.id, 'approved'),
                       onReject: () => _updateStatus(booking.id, 'rejected'),
                       onTap: () async {
                         final result = await Navigator.push<bool>(
@@ -229,8 +229,9 @@ class _BookingCard extends StatelessWidget {
     Color statusColor;
     switch (booking.status) {
       case 'confirmed': statusColor = Colors.green; break;
+      case 'approved': statusColor = Colors.blue; break;
       case 'rejected': statusColor = Colors.red; break;
-      case 'completed': statusColor = Colors.blue; break;
+      case 'completed': statusColor = Colors.grey; break;
       default: statusColor = Colors.orange;
     }
 
@@ -306,7 +307,7 @@ class _BookingCard extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: onAccept,
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                      child: const Text('Accept'),
+                      child: const Text('Approve'),
                     ),
                   ),
                 ],

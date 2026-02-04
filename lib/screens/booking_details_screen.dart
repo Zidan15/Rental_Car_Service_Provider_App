@@ -85,7 +85,8 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   String _getDialogTitle(String status) {
     switch (status) {
-      case 'confirmed': return 'Accept Booking';
+      case 'confirmed': return 'Confirm Payment';
+      case 'approved': return 'Approve Booking';
       case 'rejected': return 'Reject Booking';
       case 'cancelled': return 'Cancel Booking';
       case 'completed': return 'Complete Trip';
@@ -95,14 +96,16 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   String _getDialogContent(String status) {
     switch (status) {
+      case 'approved':
+        return 'Approve this booking? The renter will be asked to make payment.';
       case 'confirmed': 
-        return 'Accept this booking request from ${_booking.renterName ?? "the renter"}?';
+        return 'Confirm this booking? This implies payment is received.';
       case 'rejected': 
         return 'Reject this booking request? The renter will be notified.';
       case 'cancelled': 
-        return 'Cancel this confirmed booking? The renter will be notified and may expect a refund.';
+        return 'Cancel this booking? The renter will be notified.';
       case 'completed': 
-        return 'Mark this trip as completed? This confirms the vehicle has been returned and will add the earnings to your account.';
+        return 'Mark this trip as completed? This confirms vehicle return.';
       default: 
         return 'Are you sure?';
     }
@@ -110,17 +113,19 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
 
   String _getDialogAction(String status) {
     switch (status) {
-      case 'confirmed': return 'Accept';
+      case 'approved': return 'Approve';
+      case 'confirmed': return 'Confirm';
       case 'rejected': return 'Reject';
       case 'cancelled': return 'Cancel Booking';
       case 'completed': return 'Complete';
-      default: return 'Confirm';
+      default: return 'Update';
     }
   }
 
   String _getStatusLabel(String status) {
     switch (status) {
-      case 'confirmed': return 'accepted';
+      case 'approved': return 'approved';
+      case 'confirmed': return 'confirmed';
       case 'rejected': return 'rejected';
       case 'cancelled': return 'cancelled';
       case 'completed': return 'completed';
@@ -434,17 +439,51 @@ class _BookingDetailsScreenState extends State<BookingDetailsScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () => _updateStatus('confirmed'),
+                      onPressed: () => _updateStatus('approved'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text('Accept'),
+                      child: const Text('Approve'),
                     ),
                   ),
                 ],
               ),
+            ] else if (_booking.status == 'approved') ...[
+               // APPROVED STATE (Waiting for Payment)
+               Container(
+                 padding: const EdgeInsets.all(16),
+                 decoration: BoxDecoration(
+                   color: Colors.blue.withAlpha(26),
+                   borderRadius: BorderRadius.circular(12),
+                 ),
+                 child: Row(
+                   children: [
+                     const Icon(Icons.info_outline, color: Colors.blue),
+                     const SizedBox(width: 12),
+                     Expanded(
+                       child: Text(
+                         'Booking approved. Waiting for renter payment.',
+                         style: theme.textTheme.bodyMedium?.copyWith(color: Colors.blue[800]),
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
+               const SizedBox(height: 16),
+               SizedBox(
+                 width: double.infinity,
+                 child: OutlinedButton(
+                    onPressed: () => _updateStatus('cancelled'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.orange,
+                      side: const BorderSide(color: Colors.orange),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text('Cancel Booking'),
+                  ),
+               ),
             ] else if (_booking.status == 'confirmed') ...[
               Row(
                 children: [
@@ -535,13 +574,18 @@ class _StatusBadge extends StatelessWidget {
         label = 'PENDING';
         break;
       case 'confirmed':
-        backgroundColor = Colors.blue.withAlpha(26);
-        textColor = Colors.blue;
+        backgroundColor = Colors.green.withAlpha(26); // Confirmed is distinct from approved
+        textColor = Colors.green;
         label = 'CONFIRMED';
         break;
+      case 'approved':
+        backgroundColor = Colors.blue.withAlpha(26);
+        textColor = Colors.blue;
+        label = 'APPROVED';
+        break;
       case 'completed':
-        backgroundColor = Colors.green.withAlpha(26);
-        textColor = Colors.green;
+        backgroundColor = Colors.grey.withAlpha(26);
+        textColor = Colors.grey;
         label = 'COMPLETED';
         break;
       case 'cancelled':
