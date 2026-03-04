@@ -150,6 +150,16 @@ class VehicleService {
   
   // --- END NEW CHART FUNCTIONS ---
 
+  // --- REAL-TIME SENSOR DATA STREAM ---
+  /// Returns a real-time stream of sensor_data rows.
+  /// Supabase Realtime will push updates whenever new rows are inserted.
+  Stream<List<Map<String, dynamic>>> getSensorDataStream() {
+    return supabase
+        .from('sensor_data')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false);
+  }
+
   // Your search function is perfect
   static List<Vehicle> searchVehicles(List<Vehicle> vehicles, String query) {
     if (query.isEmpty) return vehicles;

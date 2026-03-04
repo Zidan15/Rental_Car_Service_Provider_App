@@ -1,5 +1,6 @@
 // lib/screens/vehicle_detail_screen.dart
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/models/sensor_reading.dart';
@@ -149,13 +150,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _OverviewTab(vehicle: _vehicle), 
-            _PlaceholderTab(message: 'Dashcam footage will appear here'),
-            _PlaceholderTab(message: 'Internal camera footage will appear here'),
-            _GPSTab(vehicle: _vehicle), 
-          ],
+        body: SafeArea(
+          top: false,
+          child: TabBarView(
+            children: [
+              _OverviewTab(vehicle: _vehicle), 
+              _PlaceholderTab(message: 'Dashcam footage will appear here'),
+              _PlaceholderTab(message: 'Internal camera footage will appear here'),
+              _GPSTab(vehicle: _vehicle), 
+            ],
+          ),
         ),
       ),
     );
@@ -175,25 +179,30 @@ class _OverviewTab extends StatefulWidget {
 }
 
 class _OverviewTabState extends State<_OverviewTab> {
-  // Create instance of the service
   final VehicleService _vehicleService = VehicleService();
   
-  // State variables to hold the fetched chart data
+  // Mutable vehicle to reflect real-time sensor updates
+  late Vehicle _currentVehicle;
+  
+  // Chart data lists
   List<SensorReading> _alcoholReadings = [];
   List<SensorReading> _engineTempReadings = [];
   List<SensorReading> _speedReadings = [];
   
   bool _isLoading = true;
 
+  // Real-time subscription
+  StreamSubscription<List<Map<String, dynamic>>>? _sensorSubscription;
+
   @override
   void initState() {
     super.initState();
-    _loadChartData(); // Call the fetch function when the tab loads
+    _currentVehicle = widget.vehicle;
+    _loadChartData();
   }
 
-  // Function to fetch all three sparkline datasets
+  // Fetch historical chart data, then start real-time stream
   Future<void> _loadChartData() async {
-    // We fetch each chart's data individually
     final futures = [
       _vehicleService.getAlcoholReadings(widget.vehicle.id),
       _vehicleService.getEngineTempReadings(widget.vehicle.id),
@@ -210,12 +219,76 @@ class _OverviewTabState extends State<_OverviewTab> {
         _isLoading = false;
       });
     }
+
+    // Start real-time sensor stream for THIS vehicle
+    _sensorSubscription = _vehicleService.getSensorDataStream().listen((sensorRows) {
+      if (!mounted) return;
+
+      // Find the latest reading for this specific vehicle
+      final myReadings = sensorRows
+          .where((row) => row['vehicle_id'] == widget.vehicle.id)
+          .toList();
+
+      if (myReadings.isEmpty) return;
+
+      final latest = myReadings.first; // First = newest (ordered DESC)
+      final alcohol = (latest['alcohol_level'] as num?)?.toDouble() ?? _currentVehicle.alcoholLevel;
+      final temp = (latest['engine_temperature'] as num?)?.toDouble() ?? _currentVehicle.engineTemp;
+      final spd = (latest['speed'] as num?)?.toDouble() ?? _currentVehicle.speed;
+      final lat = (latest['latitude'] as num?)?.toDouble() ?? _currentVehicle.latitude;
+      final lon = (latest['longitude'] as num?)?.toDouble() ?? _currentVehicle.longitude;
+      final timestamp = latest['created_at'] != null
+          ? DateTime.parse(latest['created_at'])
+          : DateTime.now();
+
+      // Calculate updated status
+      VehicleStatus newStatus = VehicleStatus.healthy;
+      if (alcohol > 0.08 || temp > 100.0) {
+        newStatus = VehicleStatus.critical;
+      } else if (alcohol > 0.0 || temp > 90.0) {
+        newStatus = VehicleStatus.warning;
+      }
+
+      setState(() {
+        // Update the live vehicle values
+        _currentVehicle = _currentVehicle.copyWith(
+          alcoholLevel: alcohol,
+          engineTemp: temp,
+          speed: spd,
+          latitude: lat,
+          longitude: lon,
+          lastReading: timestamp,
+          status: newStatus,
+        );
+
+        // Prepend new readings to chart data (keep max 50)
+        _alcoholReadings = [
+          SensorReading(timestamp: timestamp, value: alcohol),
+          ..._alcoholReadings,
+        ].take(50).toList();
+        
+        _engineTempReadings = [
+          SensorReading(timestamp: timestamp, value: temp),
+          ..._engineTempReadings,
+        ].take(50).toList();
+        
+        _speedReadings = [
+          SensorReading(timestamp: timestamp, value: spd),
+          ..._speedReadings,
+        ].take(50).toList();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _sensorSubscription?.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final vehicle = widget.vehicle;
+    final vehicle = _currentVehicle; // Use the live-updated vehicle
     
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -257,13 +330,13 @@ class _OverviewTabState extends State<_OverviewTab> {
           ),
           const SizedBox(height: 20),
           
-          // --- SENSOR CARDS WITH REAL FETCHED DATA ---
+          // --- SENSOR CARDS WITH LIVE DATA ---
           _SensorCard(
             title: 'Alcohol Level',
             value: '${vehicle.alcoholLevel.toStringAsFixed(2)} %',
             threshold: '0.08 %',
             color: LightModeColors.lightCritical,
-            readings: _alcoholReadings, // Pass the FETCHED data
+            readings: _alcoholReadings,
           ),
           const SizedBox(height: 12),
           _SensorCard(
@@ -271,7 +344,7 @@ class _OverviewTabState extends State<_OverviewTab> {
             value: '${vehicle.engineTemp.toStringAsFixed(1)} °C',
             threshold: '100 °C',
             color: LightModeColors.lightWarning,
-            readings: _engineTempReadings, // Pass the FETCHED data
+            readings: _engineTempReadings,
           ),
           const SizedBox(height: 12),
           _SensorCard(
@@ -279,7 +352,7 @@ class _OverviewTabState extends State<_OverviewTab> {
             value: '${vehicle.speed.toStringAsFixed(0)} km/h',
             threshold: '80 km/h',
             color: LightModeColors.lightSuccess,
-            readings: _speedReadings, // Pass the FETCHED data
+            readings: _speedReadings,
           ),
         ],
       ),
@@ -305,6 +378,15 @@ class _GPSTab extends StatefulWidget {
 
 class _GPSTabState extends State<_GPSTab> {
   final MapController _mapController = MapController();
+  final VehicleService _vehicleService = VehicleService();
+  
+  // Live-updating coordinates
+  late double _latitude;
+  late double _longitude;
+  late DateTime _lastUpdated;
+
+  // Real-time subscription
+  StreamSubscription<List<Map<String, dynamic>>>? _sensorSubscription;
   
   // Goa center coordinates
   static const LatLng _goaCenter = LatLng(15.2993, 74.1240);
@@ -316,114 +398,176 @@ class _GPSTabState extends State<_GPSTab> {
   );
 
   @override
+  void initState() {
+    super.initState();
+    _latitude = widget.vehicle.latitude;
+    _longitude = widget.vehicle.longitude;
+    _lastUpdated = widget.vehicle.lastReading;
+    _startRealtimeStream();
+  }
+
+  void _startRealtimeStream() {
+    _sensorSubscription = _vehicleService.getSensorDataStream().listen((sensorRows) {
+      if (!mounted) return;
+
+      // Find the latest reading for this specific vehicle
+      final myReadings = sensorRows
+          .where((row) => row['vehicle_id'] == widget.vehicle.id)
+          .toList();
+
+      if (myReadings.isEmpty) return;
+
+      final latest = myReadings.first; // First = newest (ordered DESC)
+      final newLat = (latest['latitude'] as num?)?.toDouble();
+      final newLon = (latest['longitude'] as num?)?.toDouble();
+
+      // Only update if we got real coordinate data
+      if (newLat == null && newLon == null) return;
+
+      final lat = newLat ?? _latitude;
+      final lon = newLon ?? _longitude;
+
+      // Skip update if coordinates haven't changed
+      if (lat == _latitude && lon == _longitude) return;
+
+      setState(() {
+        _latitude = lat;
+        _longitude = lon;
+        _lastUpdated = latest['created_at'] != null
+            ? DateTime.parse(latest['created_at'])
+            : DateTime.now();
+      });
+
+      // Animate map camera to new position
+      if (lat != 0.0 || lon != 0.0) {
+        try {
+          _mapController.move(LatLng(lat, lon), _mapController.camera.zoom);
+        } catch (_) {
+          // Map controller might not be ready yet
+        }
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _sensorSubscription?.cancel();
     _mapController.dispose();
     super.dispose();
   }
 
   LatLng get _vehicleLocation {
-    // Use real vehicle coordinates if available, otherwise fall back to Goa center
-    if (widget.vehicle.latitude != 0.0 || widget.vehicle.longitude != 0.0) {
-      return LatLng(widget.vehicle.latitude, widget.vehicle.longitude);
+    if (_latitude != 0.0 || _longitude != 0.0) {
+      return LatLng(_latitude, _longitude);
     }
     return _goaCenter;
   }
 
+  bool get _hasRealData => _latitude != 0.0 || _longitude != 0.0;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasRealData = widget.vehicle.latitude != 0.0 || widget.vehicle.longitude != 0.0;
     
     return Column(
       children: [
         // Map container
         Expanded(
-          child: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(0),
-              bottomRight: Radius.circular(0),
-            ),
-            child: FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                initialCenter: _vehicleLocation,
-                initialZoom: 12.0,
-                minZoom: 8.0,
-                maxZoom: 18.0,
-                cameraConstraint: CameraConstraint.contain(
-                  bounds: _goaBounds,
-                ),
-                interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
-                ),
+          child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _vehicleLocation,
+              initialZoom: 12.0,
+              minZoom: 8.0,
+              maxZoom: 18.0,
+              cameraConstraint: CameraConstraint.contain(
+                bounds: _goaBounds,
               ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.example.fleetwise',
-                ),
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _vehicleLocation,
-                      width: 60,
-                      height: 60,
-                      child: const Icon(
-                        Icons.location_on,
-                        size: 40,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        
-        // Info card at bottom
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.cardTheme.color,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(26),
-                blurRadius: 8,
-                offset: const Offset(0, -2),
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            ),
             children: [
-              Row(
-                children: [
-                  Icon(
-                    hasRealData ? Icons.gps_fixed : Icons.gps_off,
-                    size: 20,
-                    color: hasRealData ? Colors.green : theme.colorScheme.secondary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    hasRealData ? 'Live Location' : 'GPS Data Pending',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.fleetwise',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _vehicleLocation,
+                    width: 60,
+                    height: 60,
+                    child: const Icon(
+                      Icons.location_on,
+                      size: 40,
+                      color: Colors.blue,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                hasRealData
-                    ? '${widget.vehicle.latitude.toStringAsFixed(4)}° N, ${widget.vehicle.longitude.toStringAsFixed(4)}° E'
-                    : 'GPS data from IoT module (Phase 2)',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.secondary,
-                ),
-              ),
             ],
+          ),
+        ),
+        
+        // Info card at bottom
+        SafeArea(
+          top: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.cardTheme.color,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(26),
+                  blurRadius: 8,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      _hasRealData ? Icons.gps_fixed : Icons.gps_off,
+                      size: 20,
+                      color: _hasRealData ? Colors.green : theme.colorScheme.secondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _hasRealData ? 'Live Location' : 'GPS Data Pending',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (_hasRealData)
+                      Icon(Icons.circle, size: 8, color: Colors.green.shade400),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _hasRealData
+                      ? '${_latitude.toStringAsFixed(4)}° N, ${_longitude.toStringAsFixed(4)}° E'
+                      : 'GPS data from IoT module (Phase 2)',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.secondary,
+                  ),
+                ),
+                if (_hasRealData) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Updated: ${_lastUpdated.day}/${_lastUpdated.month}/${_lastUpdated.year} ${_lastUpdated.hour}:${_lastUpdated.minute.toString().padLeft(2, '0')}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.secondary.withAlpha(153),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ],

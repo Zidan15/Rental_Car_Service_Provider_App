@@ -154,10 +154,13 @@ class _MainNavigationState extends State<MainNavigation> {
         ),
       ),
       
-      body: IndexedStack(
-        index: _currentIndex,
-        // ✅ CRUCIAL: Use the list generated in build() with the updated key
-        children: currentScreens,
+      body: SafeArea(
+        top: false, // AppBar handles the top
+        child: IndexedStack(
+          index: _currentIndex,
+          // ✅ CRUCIAL: Use the list generated in build() with the updated key
+          children: currentScreens,
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(

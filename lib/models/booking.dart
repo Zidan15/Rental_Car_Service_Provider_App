@@ -52,7 +52,7 @@ class Booking {
       renterName: json['profiles'] != null ? json['profiles']['full_name'] : null,
       renterPhone: json['profiles'] != null ? json['profiles']['contact_number'] : null,
       vehicleName: json['vehicles'] != null 
-          ? "${json['vehicles']['year']} ${json['vehicles']['brand']} ${json['vehicles']['model']}"
+          ? "${json['vehicles']['brand']} ${json['vehicles']['model']}"
           : null,
       vehiclePlate: json['vehicles'] != null ? json['vehicles']['plate_number'] : null,
     );

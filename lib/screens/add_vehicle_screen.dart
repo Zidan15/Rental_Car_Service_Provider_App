@@ -1,8 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/models/location.dart';
 import 'package:fleetwise/services/vehicle_service.dart';
 import 'package:fleetwise/services/location_service.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -46,6 +48,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   String? _selectedColor;
   String? _selectedCategory;
 
+  // --- Photo picker state ---
+  // Picked image bytes (for display & upload)
+  final List<Uint8List> _pickedImageBytes = [];
+  // Names for each picked file
+  final List<String> _pickedImageNames = [];
+  // Existing image URL from DB (edit mode)
+  String? _existingImageUrl;
+  bool _isUploadingPhotos = false;
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +81,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       _selectedColor = v.color;
       _selectedCategory = v.category;
       _selectedLocationId = v.locationId;
+      _existingImageUrl = v.imageUrl;
     }
     _loadLocations();
   }
@@ -100,11 +112,38 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
 
   Future<void> _submitForm() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
+        // 1. Upload any newly picked photos to Supabase Storage
+        String? uploadedImageUrl = _existingImageUrl;
+        if (_pickedImageBytes.isNotEmpty) {
+          setState(() => _isUploadingPhotos = true);
+          final supabase = Supabase.instance.client;
+          final userId = supabase.auth.currentUser!.id;
+          // Upload the first image (primary photo)
+          final bytes = _pickedImageBytes[0];
+          final fileName = _pickedImageNames[0];
+          final ext = fileName.split('.').last.toLowerCase();
+          final storagePath = '$userId/${const Uuid().v4()}.$ext';
+
+          await supabase.storage
+              .from('vehicle-images')
+              .uploadBinary(
+                storagePath,
+                bytes,
+                fileOptions: FileOptions(
+                  contentType: 'image/$ext',
+                  upsert: true,
+                ),
+              );
+
+          uploadedImageUrl = supabase.storage
+              .from('vehicle-images')
+              .getPublicUrl(storagePath);
+          setState(() => _isUploadingPhotos = false);
+        }
+
         final priceText = _priceController.text.trim();
         final price = priceText.isEmpty ? 0.0 : double.parse(priceText);
 
@@ -128,7 +167,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           speed: 0.0,
           latitude: 0.0,
           longitude: 0.0,
-          imageUrl: _isEditMode ? widget.vehicleToEdit!.imageUrl : null,
+          imageUrl: uploadedImageUrl,
         );
 
         if (_isEditMode) {
@@ -170,9 +209,20 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             _selectedCategory = null;
             _selectedLocationId = null;
             _isListed = true;
+            _pickedImageBytes.clear();
+            _pickedImageNames.clear();
+            _existingImageUrl = null;
           });
         }
 
+      } on StorageException catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Photo upload failed: ${e.message}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       } on PostgrestException catch (e) {
         if (!mounted) return;
         String errorMessage = 'Error ${_isEditMode ? 'updating' : 'adding'} vehicle: ${e.message}';
@@ -332,8 +382,15 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         labelText: 'Vehicle Location',
                         prefixIcon: Icon(Icons.location_on),
                       ),
+                      isExpanded: true, // Prevents overflow by expanding to fill available width
                       value: _selectedLocationId,
-                      items: _locations.map((loc) => DropdownMenuItem(value: loc.id, child: Text(loc.name))).toList(),
+                      items: _locations.map((loc) => DropdownMenuItem(
+                        value: loc.id, 
+                        child: Text(
+                          loc.name,
+                          overflow: TextOverflow.ellipsis, // Truncate long names
+                        ),
+                      )).toList(),
                       onChanged: (val) => setState(() => _selectedLocationId = val),
                     ),
           const SizedBox(height: 16),
@@ -478,24 +535,16 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
             ),
           ),
 
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Photo picker (mock only)')),
-              );
-            },
-            icon: const Icon(Icons.add_photo_alternate_outlined),
-            label: const Text('Add Photos'),
-          ),
+          // --- PHOTO PICKER ---
+          _buildPhotoPicker(theme),
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: _isLoading ? null : _submitForm,
-            child: _isLoading 
+            child: _isLoading
               ? const SizedBox(
-                  height: 20, 
-                  width: 20, 
-                  child: CircularProgressIndicator(strokeWidth: 2)
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Text(_isEditMode ? 'Update Vehicle' : 'Submit'),
           ),
@@ -503,5 +552,161 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
         ],
       ),
     );
+  }
+
+
+  // ----------------------------------------------------------------
+  // PHOTO PICKER WIDGET
+  // ----------------------------------------------------------------
+  Widget _buildPhotoPicker(ThemeData theme) {
+    final hasImages = _existingImageUrl != null || _pickedImageBytes.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        // Thumbnail grid
+        if (hasImages)
+          SizedBox(
+            height: 100,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                // Show existing DB image (edit mode)
+                if (_existingImageUrl != null && _pickedImageBytes.isEmpty)
+                  Stack(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage(_existingImageUrl!),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 12,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _existingImageUrl = null),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withAlpha(153),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(Icons.close, color: Colors.white, size: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                // Show newly picked images
+                ..._pickedImageBytes.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final bytes = entry.value;
+                  return Stack(
+                    children: [
+                      Container(
+                        width: 100,
+                        height: 100,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: MemoryImage(bytes),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 12,
+                        child: GestureDetector(
+                          onTap: () => setState(() {
+                            _pickedImageBytes.removeAt(idx);
+                            _pickedImageNames.removeAt(idx);
+                          }),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withAlpha(153),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(4),
+                            child: const Icon(Icons.close, color: Colors.white, size: 14),
+                          ),
+                        ),
+                      ),
+                      if (idx == 0)
+                        Positioned(
+                          bottom: 4,
+                          left: 4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primary.withAlpha(204),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text('Cover', style: TextStyle(color: Colors.white, fontSize: 10)),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          ),
+        if (hasImages) const SizedBox(height: 8),
+
+        // Add Photos button
+        OutlinedButton.icon(
+          onPressed: _isUploadingPhotos ? null : _pickImages,
+          icon: _isUploadingPhotos
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.add_photo_alternate_outlined),
+          label: Text(_isUploadingPhotos
+              ? 'Uploading...'
+              : hasImages
+                  ? 'Add More Photos'
+                  : 'Add Photos'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+          ),
+        ),
+        if (_pickedImageBytes.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              '${_pickedImageBytes.length} photo${_pickedImageBytes.length > 1 ? 's' : ''} selected • First photo is the cover',
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // Pick images using image_picker
+  Future<void> _pickImages() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickMultiImage(imageQuality: 80);
+    if (picked.isEmpty) return;
+
+    for (final xFile in picked) {
+      final bytes = await xFile.readAsBytes();
+      if (mounted) {
+        setState(() {
+          _pickedImageBytes.add(bytes);
+          _pickedImageNames.add(xFile.name);
+        });
+      }
+    }
   }
 }

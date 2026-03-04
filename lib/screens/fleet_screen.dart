@@ -1,4 +1,5 @@
 // lib/screens/fleet_screen.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/services/vehicle_service.dart';
@@ -20,58 +21,116 @@ class FleetScreen extends StatefulWidget {
 }
 
 class _FleetScreenState extends State<FleetScreen> {
-  // --- 1. ADD STATE VARIABLES ---
-  bool _isLoading = true; // To show a loading circle
-  int _activeAlerts = 0; // To store the real alert count
+  // --- 1. STATE VARIABLES ---
+  bool _isLoading = true;
+  int _activeAlerts = 0;
 
   bool _isListMaximized = false; 
   final _searchController = TextEditingController();
   List<Vehicle> _vehicles = [];
   List<Vehicle> _filteredVehicles = [];
 
-  // --- 2. CREATE INSTANCES OF YOUR REAL SERVICES ---
-  // We can't use 'static' anymore, we need real instances.
+  // --- 2. SERVICES ---
   final VehicleService _vehicleService = VehicleService();
   final AlertService _alertService = AlertService();
 
+  // --- 3. REAL-TIME SUBSCRIPTION ---
+  StreamSubscription<List<Map<String, dynamic>>>? _sensorSubscription;
 
   @override
   void initState() {
     super.initState();
-    // --- 3. LOAD REAL DATA IN INITSTATE ---
-    _loadData(); // This replaces the mock data call
+    _loadData();
     _searchController.addListener(_onSearchChanged);
   }
 
-  // --- 4. CREATE A FUNCTION TO LOAD DATA ---
+  // --- 4. LOAD DATA + START REAL-TIME STREAM ---
   Future<void> _loadData() async {
-    // Show loading spinner
     if (!mounted) return;
     setState(() {
       _isLoading = true;
     });
     
-    // Call your real services at the same time
+    // Fetch vehicle info + latest sensor data (one-time)
     final futures = [
       _vehicleService.getVehicles(),
       _alertService.getActiveAlertsCount(),
     ];
 
-    // Wait for both to finish
     final results = await Future.wait(futures);
 
-    // Update the state with the real data
     if (!mounted) return;
     setState(() {
       _vehicles = results[0] as List<Vehicle>;
       _filteredVehicles = _vehicles;
       _activeAlerts = results[1] as int;
-      _isLoading = false; // Hide loading spinner
+      _isLoading = false;
+    });
+
+    // Cancel any previous subscription before starting a new one
+    _sensorSubscription?.cancel();
+
+    // Start listening for real-time sensor updates
+    _sensorSubscription = _vehicleService.getSensorDataStream().listen((sensorRows) {
+      if (!mounted || _vehicles.isEmpty) return;
+      
+      // Group the latest reading per vehicle_id
+      final latestByVehicle = <String, Map<String, dynamic>>{};
+      for (final row in sensorRows) {
+        final vid = row['vehicle_id'] as String?;
+        if (vid != null && !latestByVehicle.containsKey(vid)) {
+          latestByVehicle[vid] = row; // First row is latest (ordered by created_at DESC)
+        }
+      }
+
+      // Merge sensor data into cached vehicles
+      bool hasChanges = false;
+      final updatedVehicles = _vehicles.map((vehicle) {
+        final sensorRow = latestByVehicle[vehicle.id];
+        if (sensorRow == null) return vehicle;
+
+        hasChanges = true;
+        final alcohol = (sensorRow['alcohol_level'] as num?)?.toDouble() ?? vehicle.alcoholLevel;
+        final temp = (sensorRow['engine_temperature'] as num?)?.toDouble() ?? vehicle.engineTemp;
+        final spd = (sensorRow['speed'] as num?)?.toDouble() ?? vehicle.speed;
+        final lat = (sensorRow['latitude'] as num?)?.toDouble() ?? vehicle.latitude;
+        final lon = (sensorRow['longitude'] as num?)?.toDouble() ?? vehicle.longitude;
+        final timestamp = sensorRow['created_at'] != null
+            ? DateTime.parse(sensorRow['created_at'])
+            : vehicle.lastReading;
+
+        // Calculate status from new sensor data
+        VehicleStatus newStatus = VehicleStatus.healthy;
+        if (alcohol > 0.08 || temp > 100.0) {
+          newStatus = VehicleStatus.critical;
+        } else if (alcohol > 0.0 || temp > 90.0) {
+          newStatus = VehicleStatus.warning;
+        }
+
+        return vehicle.copyWith(
+          alcoholLevel: alcohol,
+          engineTemp: temp,
+          speed: spd,
+          latitude: lat,
+          longitude: lon,
+          lastReading: timestamp,
+          status: newStatus,
+        );
+      }).toList();
+
+      if (hasChanges && mounted) {
+        setState(() {
+          _vehicles = updatedVehicles;
+          // Re-apply search filter
+          _filteredVehicles = VehicleService.searchVehicles(_vehicles, _searchController.text);
+        });
+      }
     });
   }
 
   @override
   void dispose() {
+    _sensorSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }

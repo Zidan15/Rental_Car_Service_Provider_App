@@ -27,6 +27,7 @@ class UserService {
           'full_name': fullName,
           'company': company,
           'contact_number': contactNumber,
+          'role': 'provider',
         }
       );
 
@@ -43,6 +44,7 @@ class UserService {
             'full_name': fullName,
             'company': company,
             'contact_number': contactNumber,
+            'role': 'provider',
           });
         } catch (insertError) {
           print('Error inserting profile immediately: $insertError');
@@ -80,6 +82,7 @@ class UserService {
           'full_name': fullName,
           'company': company,
           'contact_number': contactNumber,
+          'role': 'provider',
         });
       }
     } catch (e) {
@@ -141,6 +144,7 @@ class UserService {
         'full_name': fullName,
         'company': company,
         'contact_number': contactNumber,
+        'role': 'provider',
       });
     } catch (e) {
       rethrow;

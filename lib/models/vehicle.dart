@@ -126,4 +126,38 @@ class Vehicle {
       'location_id': locationId,
     };
   }
+
+  // Create a copy with updated sensor values (for real-time updates)
+  Vehicle copyWith({
+    VehicleStatus? status,
+    DateTime? lastReading,
+    double? alcoholLevel,
+    double? engineTemp,
+    double? speed,
+    double? latitude,
+    double? longitude,
+  }) {
+    return Vehicle(
+      id: id,
+      brand: brand,
+      model: model,
+      year: year,
+      fuelType: fuelType,
+      transmission: transmission,
+      color: color,
+      plateNumber: plateNumber,
+      category: category,
+      imageUrl: imageUrl,
+      pricePerDay: pricePerDay,
+      isListed: isListed,
+      locationId: locationId,
+      status: status ?? this.status,
+      lastReading: lastReading ?? this.lastReading,
+      alcoholLevel: alcoholLevel ?? this.alcoholLevel,
+      engineTemp: engineTemp ?? this.engineTemp,
+      speed: speed ?? this.speed,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+    );
+  }
 }

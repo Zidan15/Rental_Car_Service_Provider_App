@@ -589,8 +589,8 @@ class _StatusBadge extends StatelessWidget {
         label = 'COMPLETED';
         break;
       case 'cancelled':
-        backgroundColor = Colors.grey.withAlpha(26);
-        textColor = Colors.grey;
+        backgroundColor = Colors.red.withAlpha(26);
+        textColor = Colors.red;
         label = 'CANCELLED';
         break;
       case 'rejected':

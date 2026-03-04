@@ -232,6 +232,7 @@ class _BookingCard extends StatelessWidget {
       case 'approved': statusColor = Colors.blue; break;
       case 'rejected': statusColor = Colors.red; break;
       case 'completed': statusColor = Colors.grey; break;
+      case 'cancelled': statusColor = Colors.red; break;
       default: statusColor = Colors.orange;
     }
 
