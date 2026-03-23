@@ -84,24 +84,18 @@ class VehicleService {
 
   // --- NEW CHART-SPECIFIC FUNCTIONS ---
 
-  /// Fetches historical data for the Alcohol chart
-  Future<List<SensorReading>> getAlcoholReadings(String vehicleId) async {
+  /// Fetches last 20 alcohol readings as {timestamp, label} maps.
+  /// Returns string labels (e.g. "Sober", "Drunk") sent by the Pi.
+  Future<List<Map<String, dynamic>>> getAlcoholHistory(String vehicleId) async {
     try {
-      // Select 'created_at' as 'timestamp' and 'alcohol_level' as 'value'
       final data = await supabase
           .from('sensor_data')
-          .select('created_at as timestamp, alcohol_level as value')
+          .select('created_at, alcohol_level')
           .eq('vehicle_id', vehicleId)
           .order('created_at', ascending: false)
-          .limit(50);
-
-      // Your SensorReading.fromJson will now work perfectly
-      final readings = (data as List<dynamic>)
-          .map((json) => SensorReading.fromJson(json))
-          .toList();
-      return readings;
+          .limit(20);
+      return List<Map<String, dynamic>>.from(data as List);
     } catch (e) {
-      // Log the error or handle it appropriately
       return [];
     }
   }

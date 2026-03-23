@@ -90,7 +90,7 @@ class _FleetScreenState extends State<FleetScreen> {
         if (sensorRow == null) return vehicle;
 
         hasChanges = true;
-        final alcohol = (sensorRow['alcohol_level'] as num?)?.toDouble() ?? vehicle.alcoholLevel;
+        final alcohol = sensorRow['alcohol_level'] as String? ?? vehicle.alcoholLevel;
         final temp = (sensorRow['engine_temperature'] as num?)?.toDouble() ?? vehicle.engineTemp;
         final spd = (sensorRow['speed'] as num?)?.toDouble() ?? vehicle.speed;
         final lat = (sensorRow['latitude'] as num?)?.toDouble() ?? vehicle.latitude;
@@ -99,11 +99,14 @@ class _FleetScreenState extends State<FleetScreen> {
             ? DateTime.parse(sensorRow['created_at'])
             : vehicle.lastReading;
 
-        // Calculate status from new sensor data
+        // Calculate status from alcohol string + temperature
+        final severity = alcoholSeverityFromString(alcohol);
         VehicleStatus newStatus = VehicleStatus.healthy;
-        if (alcohol > 0.08 || temp > 100.0) {
+        if (severity == AlcoholSeverity.drunk ||
+            severity == AlcoholSeverity.intoxicated ||
+            temp > 100.0) {
           newStatus = VehicleStatus.critical;
-        } else if (alcohol > 0.0 || temp > 90.0) {
+        } else if (severity == AlcoholSeverity.light || temp > 90.0) {
           newStatus = VehicleStatus.warning;
         }
 

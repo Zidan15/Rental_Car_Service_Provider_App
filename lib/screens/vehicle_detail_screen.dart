@@ -184,8 +184,9 @@ class _OverviewTabState extends State<_OverviewTab> {
   // Mutable vehicle to reflect real-time sensor updates
   late Vehicle _currentVehicle;
   
-  // Chart data lists
-  List<SensorReading> _alcoholReadings = [];
+  // Alcohol history (string labels)
+  List<Map<String, dynamic>> _alcoholHistory = [];
+  // Chart data for numeric sensors
   List<SensorReading> _engineTempReadings = [];
   List<SensorReading> _speedReadings = [];
   
@@ -201,21 +202,19 @@ class _OverviewTabState extends State<_OverviewTab> {
     _loadChartData();
   }
 
-  // Fetch historical chart data, then start real-time stream
+  // Fetch historical data, then start real-time stream
   Future<void> _loadChartData() async {
-    final futures = [
-      _vehicleService.getAlcoholReadings(widget.vehicle.id),
+    final results = await Future.wait([
+      _vehicleService.getAlcoholHistory(widget.vehicle.id),
       _vehicleService.getEngineTempReadings(widget.vehicle.id),
       _vehicleService.getSpeedReadings(widget.vehicle.id),
-    ];
-    
-    final results = await Future.wait(futures);
+    ]);
 
     if (mounted) {
       setState(() {
-        _alcoholReadings = results[0];
-        _engineTempReadings = results[1];
-        _speedReadings = results[2];
+        _alcoholHistory = results[0] as List<Map<String, dynamic>>;
+        _engineTempReadings = results[1] as List<SensorReading>;
+        _speedReadings = results[2] as List<SensorReading>;
         _isLoading = false;
       });
     }
@@ -224,15 +223,15 @@ class _OverviewTabState extends State<_OverviewTab> {
     _sensorSubscription = _vehicleService.getSensorDataStream().listen((sensorRows) {
       if (!mounted) return;
 
-      // Find the latest reading for this specific vehicle
       final myReadings = sensorRows
           .where((row) => row['vehicle_id'] == widget.vehicle.id)
           .toList();
 
       if (myReadings.isEmpty) return;
 
-      final latest = myReadings.first; // First = newest (ordered DESC)
-      final alcohol = (latest['alcohol_level'] as num?)?.toDouble() ?? _currentVehicle.alcoholLevel;
+      final latest = myReadings.first;
+      // Alcohol is now a string from the Pi
+      final alcohol = latest['alcohol_level'] as String? ?? _currentVehicle.alcoholLevel;
       final temp = (latest['engine_temperature'] as num?)?.toDouble() ?? _currentVehicle.engineTemp;
       final spd = (latest['speed'] as num?)?.toDouble() ?? _currentVehicle.speed;
       final lat = (latest['latitude'] as num?)?.toDouble() ?? _currentVehicle.latitude;
@@ -241,16 +240,18 @@ class _OverviewTabState extends State<_OverviewTab> {
           ? DateTime.parse(latest['created_at'])
           : DateTime.now();
 
-      // Calculate updated status
+      // Calculate updated status using string severity
+      final severity = alcoholSeverityFromString(alcohol);
       VehicleStatus newStatus = VehicleStatus.healthy;
-      if (alcohol > 0.08 || temp > 100.0) {
+      if (severity == AlcoholSeverity.drunk ||
+          severity == AlcoholSeverity.intoxicated ||
+          temp > 100.0) {
         newStatus = VehicleStatus.critical;
-      } else if (alcohol > 0.0 || temp > 90.0) {
+      } else if (severity == AlcoholSeverity.light || temp > 90.0) {
         newStatus = VehicleStatus.warning;
       }
 
       setState(() {
-        // Update the live vehicle values
         _currentVehicle = _currentVehicle.copyWith(
           alcoholLevel: alcohol,
           engineTemp: temp,
@@ -261,17 +262,17 @@ class _OverviewTabState extends State<_OverviewTab> {
           status: newStatus,
         );
 
-        // Prepend new readings to chart data (keep max 50)
-        _alcoholReadings = [
-          SensorReading(timestamp: timestamp, value: alcohol),
-          ..._alcoholReadings,
-        ].take(50).toList();
-        
+        // Prepend new alcohol entry to history log (keep last 20)
+        _alcoholHistory = [
+          {'created_at': timestamp.toIso8601String(), 'alcohol_level': alcohol},
+          ..._alcoholHistory,
+        ].take(20).toList();
+
         _engineTempReadings = [
           SensorReading(timestamp: timestamp, value: temp),
           ..._engineTempReadings,
         ].take(50).toList();
-        
+
         _speedReadings = [
           SensorReading(timestamp: timestamp, value: spd),
           ..._speedReadings,
@@ -330,13 +331,10 @@ class _OverviewTabState extends State<_OverviewTab> {
           ),
           const SizedBox(height: 20),
           
-          // --- SENSOR CARDS WITH LIVE DATA ---
-          _SensorCard(
-            title: 'Alcohol Level',
-            value: '${vehicle.alcoholLevel.toStringAsFixed(2)} %',
-            threshold: '0.08 %',
-            color: LightModeColors.lightCritical,
-            readings: _alcoholReadings,
+          // --- ALCOHOL LEVEL: string badge + recent readings log ---
+          _AlcoholCard(
+            vehicle: vehicle,
+            history: _alcoholHistory,
           ),
           const SizedBox(height: 12),
           _SensorCard(
@@ -753,3 +751,148 @@ class _SensorCard extends StatelessWidget {
     );
   }
 }
+
+// --------------------------------------------------------
+// --- ALCOHOL CARD: STRING LABEL + RECENT READINGS LOG ---
+// --------------------------------------------------------
+class _AlcoholCard extends StatelessWidget {
+  final Vehicle vehicle;
+  final List<Map<String, dynamic>> history;
+
+  const _AlcoholCard({required this.vehicle, required this.history});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final severity = vehicle.alcoholSeverity;
+
+    // Choose color based on severity
+    final Color badgeColor;
+    final Color badgeBg;
+    switch (severity) {
+      case AlcoholSeverity.light:
+        badgeColor = Colors.orange.shade800;
+        badgeBg = Colors.orange.shade50;
+        break;
+      case AlcoholSeverity.drunk:
+        badgeColor = Colors.red.shade700;
+        badgeBg = Colors.red.shade50;
+        break;
+      case AlcoholSeverity.intoxicated:
+        badgeColor = Colors.red.shade900;
+        badgeBg = Colors.red.shade100;
+        break;
+      case AlcoholSeverity.sober:
+        badgeColor = Colors.green.shade700;
+        badgeBg = Colors.green.shade50;
+        break;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.cardTheme.color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Alcohol Level',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.secondary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Current reading badge
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: badgeBg,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: badgeColor.withAlpha(80)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.local_bar_rounded, color: badgeColor, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      vehicle.alcoholLevel,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: badgeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              Text(
+                'Live',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            ],
+          ),
+          // Recent readings log
+          if (history.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Recent Readings',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...history.take(5).map((row) {
+              final label = row['alcohol_level'] as String? ?? 'Sober';
+              final ts = row['created_at'] != null
+                  ? DateTime.tryParse(row['created_at'])
+                  : null;
+              final timeStr = ts != null
+                  ? '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}'
+                  : '--:--';
+              final sev = alcoholSeverityFromString(label);
+              final Color dotColor;
+              switch (sev) {
+                case AlcoholSeverity.light:
+                  dotColor = Colors.orange;
+                  break;
+                case AlcoholSeverity.drunk:
+                case AlcoholSeverity.intoxicated:
+                  dotColor = Colors.red;
+                  break;
+                case AlcoholSeverity.sober:
+                  dotColor = Colors.green;
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: dotColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(label, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500)),
+                    const Spacer(),
+                    Text(timeStr, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary)),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
