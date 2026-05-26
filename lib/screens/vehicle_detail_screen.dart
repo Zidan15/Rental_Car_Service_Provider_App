@@ -155,8 +155,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           child: TabBarView(
             children: [
               _OverviewTab(vehicle: _vehicle), 
-              _PlaceholderTab(message: 'Dashcam footage will appear here'),
-              _PlaceholderTab(message: 'Internal camera footage will appear here'),
+              _PlaceholderTab(
+                message: 'Dashcam footage will stream here',
+                subtitle: 'Requires IoT unit with dashcam (Phase 2)',
+                icon: Icons.videocam_outlined,
+              ),
+              _PlaceholderTab(
+                message: 'Internal camera will stream here',
+                subtitle: 'Requires IoT unit with cabin camera (Phase 2)',
+                icon: Icons.camera_indoor_outlined,
+              ),
               _GPSTab(vehicle: _vehicle), 
             ],
           ),
@@ -386,14 +394,8 @@ class _GPSTabState extends State<_GPSTab> {
   // Real-time subscription
   StreamSubscription<List<Map<String, dynamic>>>? _sensorSubscription;
   
-  // Goa center coordinates
+  // Goa center coordinates (default view when no GPS data yet)
   static const LatLng _goaCenter = LatLng(15.2993, 74.1240);
-  
-  // Goa bounds for restricting the map (approximate for OSM)
-  static final LatLngBounds _goaBounds = LatLngBounds(
-    const LatLng(14.8, 73.6),
-    const LatLng(15.8, 74.5),
-  );
 
   @override
   void initState() {
@@ -476,11 +478,9 @@ class _GPSTabState extends State<_GPSTab> {
             options: MapOptions(
               initialCenter: _vehicleLocation,
               initialZoom: 12.0,
-              minZoom: 8.0,
+              minZoom: 3.0,
               maxZoom: 18.0,
-              cameraConstraint: CameraConstraint.contain(
-                bounds: _goaBounds,
-              ),
+              // No cameraConstraint — Pi may send test coords outside Goa bounds
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),
@@ -579,8 +579,10 @@ class _GPSTabState extends State<_GPSTab> {
 
 class _PlaceholderTab extends StatelessWidget {
   final String message;
-  const _PlaceholderTab({required this.message});
-  // ... (your code is perfect) ...
+  final String? subtitle;
+  final IconData? icon;
+  const _PlaceholderTab({required this.message, this.subtitle, this.icon});
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -592,7 +594,7 @@ class _PlaceholderTab extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.videocam_outlined,
+              icon ?? Icons.videocam_outlined,
               size: 80,
               color: theme.colorScheme.secondary.withAlpha(77),
             ),
@@ -604,12 +606,32 @@ class _PlaceholderTab extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            if (subtitle != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: theme.colorScheme.primary.withAlpha(60)),
+                ),
+                child: Text(
+                  subtitle!,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 }
+
 
 class _InfoCard extends StatelessWidget {
   final String title;

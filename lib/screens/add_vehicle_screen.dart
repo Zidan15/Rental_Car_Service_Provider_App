@@ -162,7 +162,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
           locationId: _selectedLocationId,
           status: VehicleStatus.healthy,
           lastReading: DateTime.now(),
-          alcoholLevel: 0.0,
+          alcoholLevel: 'Sober',
+
           engineTemp: 0.0,
           speed: 0.0,
           latitude: 0.0,
