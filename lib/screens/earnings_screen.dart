@@ -125,26 +125,29 @@ class _EarningsScreenState extends State<EarningsScreen> {
                     const SizedBox(height: 20),
                     
                     // Quick Filters
-                    Row(
-                      children: [
-                        _FilterChip(
-                          label: 'This Week',
-                          isSelected: _selectedFilter == 'week',
-                          onTap: () => _selectFilter('week'),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'This Month',
-                          isSelected: _selectedFilter == 'month',
-                          onTap: () => _selectFilter('month'),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'All Time',
-                          isSelected: _selectedFilter == 'all',
-                          onTap: () => _selectFilter('all'),
-                        ),
-                      ],
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _FilterChip(
+                            label: 'This Week',
+                            isSelected: _selectedFilter == 'week',
+                            onTap: () => _selectFilter('week'),
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterChip(
+                            label: 'This Month',
+                            isSelected: _selectedFilter == 'month',
+                            onTap: () => _selectFilter('month'),
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterChip(
+                            label: 'All Time',
+                            isSelected: _selectedFilter == 'all',
+                            onTap: () => _selectFilter('all'),
+                          ),
+                        ],
+                      ),
                     ),
                     
                     const SizedBox(height: 16),
