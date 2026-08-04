@@ -41,7 +41,7 @@ class _BookingsScreenState extends State<BookingsScreen> with SingleTickerProvid
           child: TabBar(
             controller: _tabController,
             labelColor: theme.colorScheme.primary,
-            unselectedLabelColor: theme.colorScheme.onSurface.withOpacity(0.6),
+            unselectedLabelColor: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             indicatorColor: theme.colorScheme.primary,
             tabs: const [
               Tab(text: 'REQUESTS'),
@@ -255,7 +255,7 @@ class _BookingCard extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -382,7 +382,7 @@ class _MyListingsTabState extends State<_MyListingsTab> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         title: Text('Publish ${vehicle.displayName}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -399,13 +399,14 @@ class _MyListingsTabState extends State<_MyListingsTab> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
               final price = double.tryParse(priceController.text);
               if (price == null || price <= 0) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Please enter a valid price')),
                 );
@@ -414,8 +415,8 @@ class _MyListingsTabState extends State<_MyListingsTab> {
 
               try {
                 await _vehicleService.toggleListing(vehicle.id, true, pricePerDay: price);
-                if (mounted) Navigator.pop(context);
-                _loadData(); // Refresh
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (mounted) _loadData(); // Refresh
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

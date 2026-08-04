@@ -1,7 +1,6 @@
 // lib/services/alert_service.dart
 import 'package:fleetwise/models/alert.dart';
 import 'package:fleetwise/main.dart'; // Import main.dart to get the 'supabase' helper
-import 'package:supabase_flutter/supabase_flutter.dart'; // Re-add for PostgrestFilterBuilder
 
 class AlertService {
   
@@ -13,7 +12,7 @@ class AlertService {
           .select()
           .eq('status', 'new')
           .count();
-      final int count = response.count ?? 0;
+      final int count = response.count;
       return count;
     } catch (e) {
       // Log the error or handle it appropriately

@@ -309,7 +309,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               labelText: 'Brand',
               prefixIcon: Icon(Icons.business),
             ),
-            value: _selectedBrand,
+            initialValue: _selectedBrand,
             items: brands.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -343,7 +343,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               labelText: 'Category',
               prefixIcon: Icon(Icons.category),
             ),
-            value: _selectedCategory,
+            initialValue: _selectedCategory,
             items: categories.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -384,7 +384,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                         prefixIcon: Icon(Icons.location_on),
                       ),
                       isExpanded: true, // Prevents overflow by expanding to fill available width
-                      value: _selectedLocationId,
+                      initialValue: _selectedLocationId,
                       items: _locations.map((loc) => DropdownMenuItem(
                         value: loc.id, 
                         child: Text(
@@ -442,7 +442,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               labelText: 'Fuel Type',
               prefixIcon: Icon(Icons.local_gas_station),
             ),
-            value: _selectedFuelType,
+            initialValue: _selectedFuelType,
             items: fuelTypes.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -466,7 +466,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               labelText: 'Transmission',
               prefixIcon: Icon(Icons.settings_outlined),
             ),
-            value: _selectedTransmission,
+            initialValue: _selectedTransmission,
             items: transmissions.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -490,7 +490,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
               labelText: 'Color',
               prefixIcon: Icon(Icons.palette),
             ),
-            value: _selectedColor,
+            initialValue: _selectedColor,
             items: colors.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,

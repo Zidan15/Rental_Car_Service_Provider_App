@@ -19,12 +19,12 @@ class EmptyState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 64, color: theme.colorScheme.secondary.withOpacity(0.5)),
+          Icon(icon, size: 64, color: theme.colorScheme.secondary.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Text(
             message,
             style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.7),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
           ),
           if (subtitle != null) ...[
@@ -32,7 +32,7 @@ class EmptyState extends StatelessWidget {
             Text(
               subtitle!,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               ),
             ),
           ],

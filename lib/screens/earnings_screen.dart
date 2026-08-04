@@ -74,7 +74,6 @@ class _EarningsScreenState extends State<EarningsScreen> {
   }
 
   double get _totalEarnings => _filteredBookings.fold(0.0, (sum, b) => sum + b.totalPrice);
-  double get _allTimeEarnings => _allCompletedBookings.fold(0.0, (sum, b) => sum + b.totalPrice);
 
   void _selectFilter(String filter) {
     setState(() {

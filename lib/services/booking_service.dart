@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:fleetwise/models/booking.dart';
 import 'package:fleetwise/main.dart'; // To access 'supabase' client
 
@@ -40,7 +41,7 @@ class BookingService {
       return bookings;
     } catch (e) {
       // Log error
-      print('Error fetching bookings: $e');
+      debugPrint('Error fetching bookings: $e');
       return [];
     }
   }
@@ -78,7 +79,7 @@ class BookingService {
       
       return bookings;
     } catch (e) {
-      print('Error fetching completed bookings: $e');
+      debugPrint('Error fetching completed bookings: $e');
       return [];
     }
   }

@@ -1,4 +1,5 @@
 // lib/services/location_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:fleetwise/models/location.dart';
 import 'package:fleetwise/main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -20,7 +21,7 @@ class LocationService {
           .map((json) => ProviderLocation.fromJson(json))
           .toList();
     } catch (e) {
-      print('Error fetching locations: $e');
+      debugPrint('Error fetching locations: $e');
       return [];
     }
   }
@@ -36,7 +37,7 @@ class LocationService {
     try {
       await supabase.from('provider_locations').insert(locationData);
     } catch (e) {
-      print('Error adding location: $e');
+      debugPrint('Error adding location: $e');
       rethrow;
     }
   }
@@ -49,7 +50,7 @@ class LocationService {
           .delete()
           .eq('id', locationId);
     } catch (e) {
-      print('Error deleting location: $e');
+      debugPrint('Error deleting location: $e');
       rethrow;
     }
   }
@@ -64,7 +65,7 @@ class LocationService {
       
       return response;
     } catch (e) {
-      print('Error checking location usage: $e');
+      debugPrint('Error checking location usage: $e');
       return 0; // Default to 0 on error, though risky
     }
   }

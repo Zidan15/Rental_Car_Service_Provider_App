@@ -1,4 +1,5 @@
 // lib/services/user_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fleetwise/main.dart'; // Import main.dart to get the 'supabase' helper
 
@@ -47,7 +48,7 @@ class UserService {
             'role': 'provider',
           });
         } catch (insertError) {
-          print('Error inserting profile immediately: $insertError');
+          debugPrint('Error inserting profile immediately: $insertError');
         }
       }
     } catch (e) {
@@ -86,7 +87,7 @@ class UserService {
         });
       }
     } catch (e) {
-      print('Error in createProfileIfMissing: $e');
+      debugPrint('Error in createProfileIfMissing: $e');
     }
   }
 

@@ -763,7 +763,7 @@ class _SensorCard extends StatelessWidget {
               height: 80,
             )
           else
-            Container(
+            SizedBox(
               height: 80,
               child: Center(child: Text('No chart data available.', style: theme.textTheme.bodySmall)),
             ),

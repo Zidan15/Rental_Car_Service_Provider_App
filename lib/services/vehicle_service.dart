@@ -1,4 +1,5 @@
 // lib/services/vehicle_service.dart
+import 'package:flutter/foundation.dart';
 import 'package:fleetwise/models/vehicle.dart';
 import 'package:fleetwise/models/sensor_reading.dart';
 import 'package:fleetwise/main.dart'; // Import main.dart to get the 'supabase' helper
@@ -15,7 +16,7 @@ class VehicleService {
       return vehicles;
     } catch (e) {
       // Log the error so we can debug
-      print('Error fetching vehicles: $e');
+      debugPrint('Error fetching vehicles: $e');
       return [];
     }
   }
@@ -44,7 +45,7 @@ class VehicleService {
           .update(vehicleData)
           .eq('id', vehicle.id);
     } catch (e) {
-      print('Error updating vehicle: $e');
+      debugPrint('Error updating vehicle: $e');
       rethrow;
     }
   }
@@ -64,7 +65,7 @@ class VehicleService {
           .update(updateData)
           .eq('id', vehicleId);
     } catch (e) {
-      print('Error toggling listing: $e');
+      debugPrint('Error toggling listing: $e');
       rethrow;
     }
   }
@@ -77,7 +78,7 @@ class VehicleService {
           .delete()
           .eq('id', vehicleId);
     } catch (e) {
-      print('Error deleting vehicle: $e');
+      debugPrint('Error deleting vehicle: $e');
       rethrow;
     }
   }
