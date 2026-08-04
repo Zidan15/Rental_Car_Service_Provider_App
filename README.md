@@ -3,7 +3,6 @@
 [![Flutter](https://img.shields.io/badge/Flutter-3.41.0-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.11.0-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
 [![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Auth-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 An IoT-enabled, cloud-connected mobile fleet management platform designed for vehicle rental providers and fleet owners in Goa. This application allows local vehicle owners to manage fleet inventory, process booking requests, track earnings analytics, and monitor vehicle diagnostics.
 
