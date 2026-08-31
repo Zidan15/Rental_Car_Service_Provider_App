@@ -8,6 +8,25 @@ An IoT-enabled, cloud-connected mobile fleet management platform designed for ve
 
 ---
 
+## 📱 App Preview
+
+| Fleet Overview | Real-Time Alerts Feed | Alert Details & Acknowledge | Real-Time GPS Tracking | Live OBD-II Diagnostics |
+| :---: | :---: | :---: | :---: | :---: |
+| <img src="assets/images/provider_fleet.png" width="160" alt="Fleet Overview"/> | <img src="assets/images/provider_alerts.png" width="160" alt="Alerts Feed"/> | <img src="assets/images/provider_alert_details.png" width="160" alt="Alert Details"/> | <img src="assets/images/provider_gps_tracking.png" width="160" alt="GPS Tracking"/> | <img src="assets/images/provider_live_diagnostics.png" width="160" alt="Live Diagnostics"/> |
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    A["IoT Hardware Node<br/>(Raspberry Pi + MQ-3 Alcohol Sensor + GPS)"] -->|"Live Telemetry Stream (HTTP POST)"| B["Supabase Cloud Platform<br/>(PostgreSQL DB, RPCs, Storage, Auth)"]
+    B -->|"Realtime WebSockets (Live Safety Alerts)"| C["Owner Management App (Flutter)<br/>Fleet & Diagnostics"]
+    D["Renter Client App (Flutter)<br/>Dual OCR (Groq Vision + ML Kit Fallback)"] -->|"Bookings, Verification & Payments"| B
+```
+
+---
+
 ## 🌟 Key Features
 
 * **🚘 Fleet Inventory Management**: Add, update, publish, or unpublish vehicles with custom pricing per day, fuel types, transmission, and location assignments.
