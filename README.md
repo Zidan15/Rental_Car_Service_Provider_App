@@ -24,14 +24,6 @@ An IoT-enabled, cloud-connected mobile fleet management platform designed for ve
 
 ---
 
-## 🔄 End-to-End System Flow
-
-<p align="center">
-  <img src="assets/images/system_flow.png" alt="Rent.Goa End-to-End System Flow" width="550"/>
-</p>
-
----
-
 ## 🌟 Key Features
 
 * **🚘 Fleet Inventory Management**: Add, update, publish, or unpublish vehicles with custom pricing per day, fuel types, transmission, and location assignments.
