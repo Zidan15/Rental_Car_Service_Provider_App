@@ -4,12 +4,15 @@ import 'package:fleetwise/theme.dart';
 import 'package:fleetwise/screens/login_screen.dart';
 import 'package:fleetwise/screens/main_navigation.dart';
 
+import 'package:fleetwise/services/env_service.dart';
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Env.load();
 
   await Supabase.initialize(
-    url: 'https://ojmzdmtpxdoaisvtefln.supabase.co', 
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpkbXRweGRvYWlzdnRlZmxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMTg1NTQsImV4cCI6MjA3ODU5NDU1NH0.YPU2PxWMo_9gPKuH23WaO1RVjMsQZLi8By00b4iA3rM',
+    url: Env.supabaseUrl, 
+    anonKey: Env.supabaseAnonKey,
   );
 
   runApp(const MyApp());
