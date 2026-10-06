@@ -84,14 +84,14 @@ class Vehicle {
   // data from Supabase into a Vehicle object.
   factory Vehicle.fromJson(Map<String, dynamic> json) {
 
-    // Alcohol level — Pi sends a string category
+    // Alcohol level: Pi sends a string category
     final String alcohol = (json['alcohol_level'] as String?) ?? 'Sober';
     final double temp = (json['engine_temperature'] as num?)?.toDouble() ?? 0.0;
     final double spd = (json['speed'] as num?)?.toDouble() ?? 0.0;
     final double lat = (json['latitude'] as num?)?.toDouble() ?? 0.0;
     final double lon = (json['longitude'] as num?)?.toDouble() ?? 0.0;
     final DateTime lastRead = json['created_at'] != null
-        ? DateTime.parse(json['created_at'])
+        ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
         : DateTime.now();
 
     // Calculate the status based on the live data

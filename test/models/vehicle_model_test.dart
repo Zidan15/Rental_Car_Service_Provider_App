@@ -99,6 +99,17 @@ void main() {
       expect(vehicle.longitude, equals(0.0));
       expect(vehicle.status, equals(VehicleStatus.healthy));
     });
+
+    test('handles malformed created_at date string gracefully without exception', () {
+      final json = {
+        'id': 'v-invalid-date',
+        'created_at': 'malformed-date-string',
+      };
+
+      final vehicle = Vehicle.fromJson(json);
+      expect(vehicle.id, equals('v-invalid-date'));
+      expect(vehicle.lastReading, isNotNull);
+    });
   });
 
   group('Vehicle Model - Serialization & copyWith', () {

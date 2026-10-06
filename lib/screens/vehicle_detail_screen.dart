@@ -480,7 +480,7 @@ class _GPSTabState extends State<_GPSTab> {
               initialZoom: 12.0,
               minZoom: 3.0,
               maxZoom: 18.0,
-              // No cameraConstraint — Pi may send test coords outside Goa bounds
+              // No cameraConstraint: Pi may send test coords outside Goa bounds
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
               ),

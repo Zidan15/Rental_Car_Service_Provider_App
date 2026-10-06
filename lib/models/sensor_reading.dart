@@ -13,7 +13,9 @@ class SensorReading {
   };
 
   factory SensorReading.fromJson(Map<String, dynamic> json) => SensorReading(
-    timestamp: DateTime.parse(json['timestamp']),
-    value: (json['value'] as num).toDouble(),
+    timestamp: json['timestamp'] != null
+        ? DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now()
+        : DateTime.now(),
+    value: (json['value'] as num?)?.toDouble() ?? 0.0,
   );
 }

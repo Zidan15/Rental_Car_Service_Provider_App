@@ -27,6 +27,28 @@ void main() {
       expect(reading.value, equals(90.0));
     });
 
+    test('deserializes safely with empty map or null fields (null safety defaults)', () {
+      final readingEmpty = SensorReading.fromJson({});
+      expect(readingEmpty.value, equals(0.0));
+      expect(readingEmpty.timestamp, isNotNull);
+
+      final readingNulls = SensorReading.fromJson({
+        'timestamp': null,
+        'value': null,
+      });
+      expect(readingNulls.value, equals(0.0));
+      expect(readingNulls.timestamp, isNotNull);
+    });
+
+    test('handles malformed timestamp string gracefully', () {
+      final reading = SensorReading.fromJson({
+        'timestamp': 'not-a-valid-timestamp',
+        'value': 42.0,
+      });
+      expect(reading.value, equals(42.0));
+      expect(reading.timestamp, isNotNull);
+    });
+
     test('serializes to JSON correctly', () {
       final date = DateTime.parse('2026-03-15T12:30:00.000Z');
       final reading = SensorReading(
